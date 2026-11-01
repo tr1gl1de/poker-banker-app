@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Калькулятор шансов</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9A35B}a:hover{color:#E2C27E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #10382B 0%, #0B2A20 45%, #071A14 100%); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #EDE6D3; font-variant-numeric: tabular-nums">
+
+  <header style="display: flex; align-items: center; gap: 8px; padding: 14px 16px 6px 8px">
+    <a href="Settings.dc.html" aria-label="Назад к настройкам" style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #EDE6D3">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1">
+      <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700">Калькулятор шансов</h1>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #C9A35B; letter-spacing: 1px">♠ СЕКРЕТНЫЙ СТОЛ</span>
+    </div>
+    <button aria-label="Сбросить" style="width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(237,230,211,0.06); color: #EDE6D3; display: flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg>
+    </button>
+  </header>
+
+  <section aria-label="Карты" style="margin: 6px 16px 0; padding: 14px; border-radius: 22px; background: radial-gradient(90% 120% at 50% 0%, #1B5A43 0%, #12432F 60%, #0D3426 100%); border: 1px solid rgba(201,163,91,0.35); display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: flex-end; gap: 16px">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #CFE0D6">Мои карты</span>
+        <div style="display: flex; gap: 6px">
+          <button aria-label="Туз пик" style="width: 52px; height: 72px; border-radius: 8px; border: 0; background: #F3EDDC; color: #1A1A1A; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.35)"><span style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700">A</span><span style="font-size: 20px">♠</span></button>
+          <button aria-label="Король пик" style="width: 52px; height: 72px; border-radius: 8px; border: 0; background: #F3EDDC; color: #1A1A1A; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; box-shadow: 0 4px 10px rgba(0,0,0,0.35); transform: rotate(4deg)"><span style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700">K</span><span style="font-size: 20px">♠</span></button>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; flex-grow: 1; min-width: 0">
+        <span style="font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #CFE0D6">Стол · флоп</span>
+        <div style="display: flex; gap: 4px">
+          <button aria-label="Дама пик" style="width: 36px; height: 50px; border-radius: 6px; border: 0; background: #F3EDDC; color: #1A1A1A; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; padding: 0"><span style="font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700">Q</span><span style="font-size: 13px">♠</span></button>
+          <button aria-label="Семёрка червей" style="width: 36px; height: 50px; border-radius: 6px; border: 0; background: #F3EDDC; color: #B3261E; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; padding: 0"><span style="font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700">7</span><span style="font-size: 13px">♥</span></button>
+          <button aria-label="Двойка пик" style="width: 36px; height: 50px; border-radius: 6px; border: 0; background: #F3EDDC; color: #1A1A1A; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; padding: 0"><span style="font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700">2</span><span style="font-size: 13px">♠</span></button>
+          <button aria-label="Добавить тёрн" style="width: 36px; height: 50px; border-radius: 6px; border: 1.5px dashed rgba(243,237,220,0.45); background: none; color: #CFE0D6; font-size: 18px; padding: 0">+</button>
+          <button aria-label="Добавить ривер" style="width: 36px; height: 50px; border-radius: 6px; border: 1.5px dashed rgba(243,237,220,0.25); background: none; color: rgba(207,224,214,0.5); font-size: 18px; padding: 0">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="margin: 10px 16px 0; display: flex; gap: 8px">
+    <div style="display: flex; align-items: center; gap: 4px; background: #12352A; border-radius: 14px; padding: 4px; flex-shrink: 0">
+      <button aria-label="Меньше игроков" style="width: 40px; height: 40px; border-radius: 10px; border: 0; background: rgba(237,230,211,0.06); color: #EDE6D3; font-size: 20px">−</button>
+      <span style="min-width: 64px; text-align: center; font-size: 13px; line-height: 1.15"><b style="font-size: 18px">6</b><br>игроков</span>
+      <button aria-label="Больше игроков" style="width: 40px; height: 40px; border-radius: 10px; border: 0; background: rgba(237,230,211,0.06); color: #EDE6D3; font-size: 20px">+</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; flex-grow: 1">
+      <label style="background: #12352A; border-radius: 12px; padding: 5px 10px; display: flex; flex-direction: column"><span style="font-size: 11px; color: #B5AE96">Банк</span><input value="1 200" style="border: 0; background: none; color: #EDE6D3; font-family: inherit; font-size: 16px; font-weight: 700; padding: 0; width: 100%"></label>
+      <label style="background: #12352A; border-radius: 12px; padding: 5px 10px; display: flex; flex-direction: column"><span style="font-size: 11px; color: #B5AE96">Ставка</span><input value="300" style="border: 0; background: none; color: #EDE6D3; font-family: inherit; font-size: 16px; font-weight: 700; padding: 0; width: 100%"></label>
+    </div>
+  </div>
+
+  <div role="radiogroup" aria-label="Позиция" style="margin: 10px 16px 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; background: #071A14; border-radius: 12px; padding: 3px">
+    <button role="radio" aria-checked="false" style="height: 36px; border-radius: 9px; border: 0; background: none; color: #9FB5AC; font-family: 'IBM Plex Mono', monospace; font-size: 12px">UTG</button>
+    <button role="radio" aria-checked="false" style="height: 36px; border-radius: 9px; border: 0; background: none; color: #9FB5AC; font-family: 'IBM Plex Mono', monospace; font-size: 12px">MP</button>
+    <button role="radio" aria-checked="false" style="height: 36px; border-radius: 9px; border: 0; background: none; color: #9FB5AC; font-family: 'IBM Plex Mono', monospace; font-size: 12px">CO</button>
+    <button role="radio" aria-checked="true" style="height: 36px; border-radius: 9px; border: 0; background: #12352A; color: #F0D79E; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; box-shadow: inset 0 0 0 1.5px rgba(201,163,91,0.6)">BTN</button>
+    <button role="radio" aria-checked="false" style="height: 36px; border-radius: 9px; border: 0; background: none; color: #9FB5AC; font-family: 'IBM Plex Mono', monospace; font-size: 12px">SB</button>
+    <button role="radio" aria-checked="false" style="height: 36px; border-radius: 9px; border: 0; background: none; color: #9FB5AC; font-family: 'IBM Plex Mono', monospace; font-size: 12px">BB</button>
+  </div>
+
+  <section aria-label="Эквити" style="margin: 14px 16px 0; background: #12352A; border-radius: 20px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between">
+      <span style="font-size: 13px; color: #CFE0D6">Шанс выиграть против 5 игроков</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B5AE96">±0,3 %</span>
+    </div>
+    <span style="font-size: 44px; font-weight: 700; letter-spacing: -1px; line-height: 1; color: #F0D79E">38,4 %</span>
+    <div aria-label="Победа 38,4 процента, ничья 1,2, проигрыш 60,4" style="display: flex; height: 10px; border-radius: 5px; overflow: hidden">
+      <span style="width: 38.4%; background: #6EDBA4"></span><span style="width: 1.2%; background: #E2C27E"></span><span style="width: 60.4%; background: rgba(255,138,128,0.55)"></span>
+    </div>
+    <div style="display: flex; gap: 14px; font-size: 12px; color: #CFE0D6"><span>● победа 38,4</span><span style="color: #E2C27E">● ничья 1,2</span><span style="color: #FFB4AC">● проигрыш 60,4</span></div>
+  </section>
+
+  <div style="margin: 8px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+    <div style="background: rgba(76,195,138,0.12); border: 1px solid rgba(110,219,164,0.45); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px">
+      <span style="font-size: 12px; color: #CFE0D6">Шансы банка</span>
+      <span style="font-size: 15px; font-weight: 700; white-space: nowrap">нужно 20,0 %</span>
+      <span style="font-size: 12px; font-weight: 600; color: #6EDBA4">колл окупается</span>
+    </div>
+    <div style="background: #12352A; border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px">
+      <span style="font-size: 12px; color: #CFE0D6">Флеш-дро · 9 аутов</span>
+      <span style="font-size: 15px; font-weight: 700; white-space: nowrap">19,6 % / 35,0 %</span>
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B5AE96">тёрн / к риверу · ≈36 % по 2 и 4</span>
+    </div>
+  </div>
+
+  <p style="margin: 10px 20px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B5AE96">Сейчас: старшая карта, туз · 150 000 раздач · офлайн</p>
+
+  <section aria-label="Памятка по позициям" style="margin: 12px 16px 0; background: #0E2E23; border: 1px solid rgba(201,163,91,0.25); border-radius: 18px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 700">Памятка: кто есть кто</h2>
+      <span style="font-size: 12px; color: #B5AE96">по часовой от дилера</span>
+    </div>
+    <dl style="margin: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr); row-gap: 5px; column-gap: 8px; font-size: 12px; line-height: 1.35">
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">UTG</dt><dd style="margin: 0; color: #CFE0D6">«под прицелом» — первый после блайндов, самая ранняя</dd>
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">MP</dt><dd style="margin: 0; color: #CFE0D6">середина стола, между UTG и CO</dd>
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">CO</dt><dd style="margin: 0; color: #CFE0D6">«катофф» — сразу перед дилером, поздняя</dd>
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">BTN</dt><dd style="margin: 0; color: #CFE0D6">баттон, дилер — после флопа ходит последним, лучшая</dd>
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">SB</dt><dd style="margin: 0; color: #CFE0D6">малый блайнд, слева от дилера</dd>
+      <dt style="font-family: 'IBM Plex Mono', monospace; color: #F0D79E">BB</dt><dd style="margin: 0; color: #CFE0D6">большой блайнд — на префлопе ходит последним</dd>
+    </dl>
+    <span style="font-size: 11px; color: #B5AE96">Чем позже позиция, тем больше видно чужих решений — и тем шире обычно разыгрывают руки.</span>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

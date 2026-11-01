@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Выход — Дима</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9A35B}a:hover{color:#E2C27E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #071A14; font-family: 'IBM Plex Sans',system-ui, sans-serif; color: #EDE6D3; font-variant-numeric: tabular-nums">
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(120% 60% at 50% 0%, #10382B 0%, #0B2A20 50%, #071A14 100%); opacity: 0.55"></div>
+
+  <section role="dialog" aria-label="Выход Димы" style="position: absolute; left: 0; right: 0; bottom: 0; top: 64px; background: #0E2E23; border-radius: 28px 28px 0 0; border-top: 1px solid rgba(201,163,91,0.28); padding: 10px 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+    <div aria-hidden="true" style="width: 36px; height: 4px; border-radius: 2px; background: rgba(237,230,211,0.3); align-self: center"></div>
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <div aria-hidden="true" style="width: 34px; height: 46px; border-radius: 6px; background: #F3EDDC; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1">
+        <span style="font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: #1A1A1A">Д</span>
+        <span style="font-size: 12px; color: #1A1A1A">♠</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px; flex-grow: 1">
+        <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700">Выход · Дима</h1>
+        <span style="font-size: 13px; color: #9FB5AC">в игре 1 ч 52 мин · закуп 3 000 · долг 3 400 ₽</span>
+      </div>
+    </div>
+
+    <label style="display: flex; flex-direction: column; gap: 6px; background: #12352A; border-radius: 16px; padding: 12px 14px; border: 1.5px solid rgba(201,163,91,0.55)">
+      <span style="font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #9FB5AC">Фишки на руках</span>
+      <input value="3 753" inputmode="numeric" style="border: 0; background: none; color: #EDE6D3; font-family: inherit; font-size: 40px; font-weight: 800; letter-spacing: -0.5px; padding: 0; width: 100%; font-variant-numeric: tabular-nums">
+    </label>
+
+    <div style="display: flex; flex-direction: column; gap: 10px; background: #12352A; border-radius: 16px; padding: 12px 14px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="font-size: 15px; font-weight: 700">Чаевые</span>
+        <span style="font-size: 13px; color: #B5AE96">по желанию игрока</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 0; background: rgba(201,163,91,0.22); color: #E2C27E; font-family: inherit; font-size: 13px; font-weight: 700; box-shadow: inset 0 0 0 1.5px #C9A35B">Без чаевых</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(159,181,172,0.35); background: none; color: #CFE0D6; font-family: inherit; font-size: 13px; font-weight: 600">до 100 · 53</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(159,181,172,0.35); background: none; color: #CFE0D6; font-family: inherit; font-size: 13px; font-weight: 600">до 500 · 253</button>
+        <button style="height: 36px; padding: 0 14px; border-radius: 18px; border: 1px solid rgba(159,181,172,0.35); background: none; color: #CFE0D6; font-family: inherit; font-size: 13px; font-weight: 600">своя сумма</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #9FB5AC">
+        <span>Кому:</span>
+        <button style="height: 32px; padding: 0 12px; border-radius: 10px; border: 0; background: #071A14; color: #EDE6D3; font-family: inherit; font-size: 13px; font-weight: 600">Банкиру</button>
+        <button style="height: 32px; padding: 0 12px; border-radius: 10px; border: 0; background: none; color: #9FB5AC; font-family: inherit; font-size: 13px; font-weight: 600">Игроку…</button>
+      </div>
+    </div>
+
+    <dl style="margin: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; font-size: 14px; padding: 0 4px">
+      <dt style="color: #9FB5AC">Фишки на руках</dt><dd style="margin: 0; text-align: right">3 753</dd>
+      <dt style="color: #9FB5AC">Чаевые</dt><dd style="margin: 0; text-align: right">—</dd>
+      <dt style="color: #9FB5AC">К выводу 1:1</dt><dd style="margin: 0; text-align: right; font-weight: 700">3 753 ₽</dd>
+      <dt style="color: #9FB5AC">Долг игрока</dt><dd style="margin: 0; text-align: right; color: #FF8A80">−3 400 ₽</dd>
+    </dl>
+
+    <div style="background: linear-gradient(180deg, rgba(76,195,138,0.18), rgba(76,195,138,0.08)); border: 1.5px solid rgba(110,219,164,0.55); border-radius: 20px; padding: 16px; display: flex; align-items: center; gap: 14px">
+      <div aria-hidden="true" style="width: 44px; height: 44px; border-radius: 22px; background: #2E7D4F; display: flex; align-items: center; justify-content: center; color: #F3EDDC">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 13px; color: #CFE0D6">Банкир выплачивает Диме</span>
+        <span style="font-size: 34px; font-weight: 800; color: #6EDBA4; letter-spacing: -0.5px">+353 ₽</span>
+      </div>
+    </div>
+
+    <p style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: -0.2px; color: #B5AE96; text-align: center">Результат за игру: +753 фишки</p>
+
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px">
+      <a href="Main.dc.html" style="height: 56px; border-radius: 16px; background: #C9A35B; color: #1A1408; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; text-decoration: none">Расчёт произведён</a>
+      <a href="Main.dc.html" style="height: 52px; border-radius: 16px; border: 1px solid rgba(237,230,211,0.22); background: rgba(237,230,211,0.05); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; font-weight: 600; text-decoration: none; color: #CFE0D6"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>Отмена</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

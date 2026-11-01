@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Статистика</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9A35B}a:hover{color:#E2C27E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #10382B 0%, #0B2A20 45%, #071A14 100%); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #EDE6D3; font-variant-numeric: tabular-nums">
+
+  <header style="display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px 8px">
+    <a href="History.dc.html" aria-label="Назад к истории" style="width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center; color: #EDE6D3">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+    </a>
+    <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; flex-grow: 1">Статистика</h1>
+    <button style="height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid rgba(201,163,91,0.5); background: none; color: #F0D79E; font-family: inherit; font-size: 13px; font-weight: 600">За 3 месяца ▾</button>
+  </header>
+
+  <div style="margin: 4px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+    <div style="background: #12352A; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #B5AE96">Игр</span><span style="font-size: 24px; font-weight: 700">12</span></div>
+    <div style="background: #12352A; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #B5AE96">Оборот фишек</span><span style="font-size: 24px; font-weight: 700; white-space: nowrap">214 500</span></div>
+    <div style="background: #12352A; border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #B5AE96">♣ Рейк заведению</span><span style="font-size: 24px; font-weight: 700; white-space: nowrap">21 450 ₽</span></div>
+    <div style="background: rgba(201,163,91,0.14); border: 1px solid rgba(201,163,91,0.45); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; color: #E2C27E">♥ Доход банкира</span><span style="font-size: 24px; font-weight: 700; color: #F0D79E; white-space: nowrap">7 100 ₽</span></div>
+  </div>
+
+  <section aria-label="Доход банкира за последние игры" style="margin: 16px 16px 0; background: #12352A; border-radius: 18px; padding: 14px 16px">
+    <h2 style="margin: 0 0 12px; font-size: 14px; font-weight: 700">Доход банкира, последние 6 игр</h2>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: end; height: 120px">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; color: #D8CFB4">500</span><div style="width: 100%; height: 62px; border-radius: 6px 6px 2px 2px; background: rgba(201,163,91,0.55)"></div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; color: #D8CFB4">400</span><div style="width: 100%; height: 50px; border-radius: 6px 6px 2px 2px; background: rgba(201,163,91,0.55)"></div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; color: #D8CFB4">700</span><div style="width: 100%; height: 87px; border-radius: 6px 6px 2px 2px; background: rgba(201,163,91,0.55)"></div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; color: #D8CFB4">600</span><div style="width: 100%; height: 75px; border-radius: 6px 6px 2px 2px; background: rgba(201,163,91,0.55)"></div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; color: #D8CFB4">500</span><div style="width: 100%; height: 62px; border-radius: 6px 6px 2px 2px; background: rgba(201,163,91,0.55)"></div></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="font-size: 11px; font-weight: 700; color: #F0D79E">800</span><div style="width: 100%; height: 100px; border-radius: 6px 6px 2px 2px; background: #C9A35B"></div></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin-top: 6px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B5AE96; text-align: center">
+      <span>13.09</span><span>20.09</span><span>27.09</span><span>11.10</span><span>18.10</span><span>25.10</span>
+    </div>
+  </section>
+
+  <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 18px 20px 8px">
+    <h2 style="margin: 0; font-size: 15px; font-weight: 700">Игроки</h2>
+    <span style="font-size: 12px; color: #B5AE96">результат в фишках</span>
+  </div>
+
+  <ul style="list-style: none; margin: 0; padding: 0 16px; display: flex; flex-direction: column; gap: 6px">
+    <li style="display: flex; align-items: center; gap: 12px; background: #12352A; border-radius: 14px; padding: 9px 12px">
+      <div aria-hidden="true" style="width: 28px; height: 38px; border-radius: 5px; background: #F3EDDC; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0"><span style="font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: #B3261E">Б</span><span style="font-size: 10px; color: #B3261E">♥</span></div>
+      <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0"><span style="font-size: 15px; font-weight: 600">Борис</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #B5AE96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">11 игр · 1,4 докупа за игру</span></div>
+      <span style="font-size: 15px; font-weight: 700; color: #6EDBA4; white-space: nowrap; flex-shrink: 0">+9 450</span>
+    </li>
+    <li style="display: flex; align-items: center; gap: 12px; background: #12352A; border-radius: 14px; padding: 9px 12px">
+      <div aria-hidden="true" style="width: 28px; height: 38px; border-radius: 5px; background: #F3EDDC; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0"><span style="font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: #1A1A1A">В</span><span style="font-size: 10px; color: #1A1A1A">♠</span></div>
+      <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0"><span style="font-size: 15px; font-weight: 600">Влад</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #B5AE96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">12 игр · 0,8 докупа за игру</span></div>
+      <span style="font-size: 15px; font-weight: 700; color: #6EDBA4; white-space: nowrap; flex-shrink: 0">+3 200</span>
+    </li>
+    <li style="display: flex; align-items: center; gap: 12px; background: #12352A; border-radius: 14px; padding: 9px 12px">
+      <div aria-hidden="true" style="width: 28px; height: 38px; border-radius: 5px; background: #F3EDDC; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; flex-shrink: 0"><span style="font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: #1A1A1A">Д</span><span style="font-size: 10px; color: #1A1A1A">♣</span></div>
+      <div style="display: flex; flex-direction: column; gap: 1px; flex-grow: 1; min-width: 0"><span style="font-size: 15px; font-weight: 600">Дима</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #B5AE96; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">9 игр · 2,1 докупа за игру</span></div>
+      <span style="font-size: 15px; font-weight: 700; color: #FF8A80; white-space: nowrap; flex-shrink: 0">−6 750</span>
+    </li>
+  </ul>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

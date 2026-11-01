@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Должник садится за стол</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9A35B}a:hover{color:#E2C27E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #071A14; font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #EDE6D3; font-variant-numeric: tabular-nums">
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(120% 60% at 50% 0%, #10382B 0%, #0B2A20 50%, #071A14 100%); opacity: 0.55"></div>
+
+  <section role="dialog" aria-label="Новый игрок" style="position: absolute; left: 0; right: 0; bottom: 0; top: 200px; background: #0E2E23; border-radius: 28px 28px 0 0; border-top: 1px solid rgba(201,163,91,0.28); padding: 10px 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+    <div aria-hidden="true" style="width: 36px; height: 4px; border-radius: 2px; background: rgba(237,230,211,0.3); align-self: center"></div>
+    <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700">Новый игрок</h1>
+
+    <label style="display: flex; flex-direction: column; gap: 4px; background: #12352A; border-radius: 14px; padding: 10px 14px; border: 1.5px solid rgba(201,163,91,0.55)">
+      <span style="font-size: 12px; color: #B5AE96">Имя</span>
+      <input value="Влад" style="border: 0; background: none; color: #EDE6D3; font-family: inherit; font-size: 18px; font-weight: 600; padding: 0">
+    </label>
+
+    <div role="alert" style="background: rgba(229,72,77,0.12); border: 1.5px solid rgba(255,138,128,0.5); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: flex-start; gap: 10px">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF8A80" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+        <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+          <span style="font-size: 16px; font-weight: 700">Влад должен 1 053 ₽</span>
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #FFD0CA">с 18 окт · Пятничный стол · 15 дней</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button style="height: 48px; border-radius: 14px; border: 0; background: #C9A35B; color: #1A1408; font-family: inherit; font-size: 14px; font-weight: 700">Погасить сейчас</button>
+        <button style="height: 48px; border-radius: 14px; border: 1px solid rgba(237,230,211,0.22); background: rgba(237,230,211,0.05); color: #EDE6D3; font-family: inherit; font-size: 14px; font-weight: 600">Посадить с долгом</button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="font-size: 13px; color: #CFE0D6">Первый закуп</span>
+      <div style="display: flex; align-items: baseline; gap: 8px">
+        <span style="font-size: 36px; font-weight: 700">1 000</span>
+        <span style="font-size: 13px; color: #B5AE96">фишек · к оплате 1 200 ₽</span>
+      </div>
+    </div>
+
+    <div role="radiogroup" aria-label="Оплата" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #071A14; border-radius: 14px; padding: 4px; gap: 4px">
+      <button role="radio" aria-checked="false" style="height: 44px; border-radius: 10px; border: 0; background: none; color: #9FB5AC; font-family: inherit; font-size: 14px; font-weight: 600">В долг</button>
+      <button role="radio" aria-checked="true" style="height: 44px; border-radius: 10px; border: 0; background: #12352A; color: #EDE6D3; font-family: inherit; font-size: 14px; font-weight: 700; box-shadow: inset 0 0 0 1.5px rgba(201,163,91,0.6)">Оплачено сейчас</button>
+    </div>
+    <p style="margin: 0; font-size: 12px; color: #B5AE96">Для игрока со старым долгом по умолчанию выбрано «Оплачено сейчас»</p>
+
+    <a href="Main.dc.html" style="margin-top: auto; height: 64px; border-radius: 20px; background: linear-gradient(180deg, #D9B66C 0%, #C9A35B 100%); color: #1A1408; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; text-decoration: none">Выдать 1 000 фишек</a>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

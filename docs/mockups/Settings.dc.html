@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Настройки</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#C9A35B}a:hover{color:#E2C27E}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #10382B 0%, #0B2A20 45%, #071A14 100%); font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #EDE6D3; font-variant-numeric: tabular-nums">
+
+  <header style="padding: 24px 20px 8px">
+    <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700">Настройки</h1>
+  </header>
+
+  <h2 style="margin: 12px 20px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 1.4px; text-transform: uppercase; color: #B5AE96">Правила по умолчанию</h2>
+  <ul style="list-style: none; margin: 0 16px; padding: 0 14px; background: #12352A; border-radius: 18px">
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0"><span style="font-size: 15px">♥ Сбор банкира</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">разово 100 ₽ ›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px">♣ Рейк</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">10 % с покупки ›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px">Минимальная покупка</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">500 ›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px">Минимальное время игры</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">60 мин ›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px">Оплата покупки</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">одним статусом ›</span></li>
+  </ul>
+
+  <h2 style="margin: 18px 20px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 1.4px; text-transform: uppercase; color: #B5AE96">Оформление и стол</h2>
+  <ul style="list-style: none; margin: 0 16px; padding: 0 14px; background: #12352A; border-radius: 18px">
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0"><span style="font-size: 15px">Тема</span><span style="font-size: 14px; font-weight: 600; color: #F0D79E; white-space: nowrap">сукно, тёмная ›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(237,230,211,0.08)">
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Цвета обоев</span><span style="font-size: 12px; color: #B5AE96">Material You вместо сукна</span></span>
+      <button role="switch" aria-checked="false" aria-label="Цвета обоев" style="width: 52px; height: 32px; border-radius: 16px; border: 1.5px solid rgba(237,230,211,0.35); background: none; padding: 0; position: relative; flex-shrink: 0"><span style="position: absolute; left: 6px; top: 6px; width: 17px; height: 17px; border-radius: 9px; background: #9FB5AC"></span></button>
+    </li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(237,230,211,0.08)">
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Не гасить экран</span><span style="font-size: 12px; color: #B5AE96">пока идёт игра</span></span>
+      <button role="switch" aria-checked="true" aria-label="Не гасить экран" style="width: 52px; height: 32px; border-radius: 16px; border: 0; background: #C9A35B; padding: 0; position: relative; flex-shrink: 0"><span style="position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border-radius: 12px; background: #1A1408"></span></button>
+    </li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid rgba(237,230,211,0.08)">
+      <span style="font-size: 15px">Вибрация при подтверждении</span>
+      <button role="switch" aria-checked="true" aria-label="Вибрация" style="width: 52px; height: 32px; border-radius: 16px; border: 0; background: #C9A35B; padding: 0; position: relative; flex-shrink: 0"><span style="position: absolute; right: 4px; top: 4px; width: 24px; height: 24px; border-radius: 12px; background: #1A1408"></span></button>
+    </li>
+  </ul>
+
+  <h2 style="margin: 18px 20px 8px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 1.4px; text-transform: uppercase; color: #B5AE96">Данные</h2>
+  <ul style="list-style: none; margin: 0 16px; padding: 0 14px; background: #12352A; border-radius: 18px">
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0"><span style="font-size: 15px">Резервная копия в файл</span><span style="font-size: 14px; color: #B5AE96">›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px">Восстановить из файла</span><span style="font-size: 14px; color: #B5AE96">›</span></li>
+    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid rgba(237,230,211,0.08)"><span style="font-size: 15px; color: #FF8A80">Удалить все игры…</span></li>
+  </ul>
+
+  <p style="margin: 14px 20px 0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B5AE96">Feltbook 1.0 · open source · данные только на телефоне</p>
+
+  <nav aria-label="Разделы" style="position: absolute; left: 0; right: 0; bottom: 0; height: 80px; background: #071A14; border-top: 1px solid rgba(201,163,91,0.14); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding-bottom: 8px; box-sizing: border-box">
+    <a href="Home.dc.html" style="color: #9FB5AC; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px">♠</span>Игра</a>
+    <a href="History.dc.html" style="color: #9FB5AC; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; text-decoration: none"><span style="width: 64px; height: 32px; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>История</a>
+    <button style="border: 0; background: none; color: #EDE6D3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-family: inherit; font-size: 12px; font-weight: 700">
+      <span style="width: 64px; height: 32px; border-radius: 16px; background: rgba(201,163,91,0.22); display: flex; align-items: center; justify-content: center; color: #E2C27E"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></span>
+      Настройки
+    </button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
