@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -24,8 +25,12 @@ import app.feltbook.feature.game.R
 
 /** «Расшифровка» цифры табло (m3-ui-spec §5.3.4). */
 @Composable
-fun BreakdownSheet(ui: BreakdownUi, onAction: (TableAction) -> Unit) {
-    FeltbookSheet(onDismiss = { onAction(TableAction.DismissSheet) }, contentSpacing = 12.dp) {
+fun BreakdownSheet(ui: BreakdownUi, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState? = null) {
+    FeltbookSheet(
+        onDismiss = { onAction(TableAction.DismissSheet) },
+        contentSpacing = 12.dp,
+        snackbarHostState = snackbar,
+    ) {
         BreakdownContent(ui)
     }
 }

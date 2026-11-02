@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import app.feltbook.core.ui.component.FeltFilterChip
 import app.feltbook.core.ui.component.FeltbookSheet
 import app.feltbook.core.ui.component.HoldButtonSize
 import app.feltbook.core.ui.component.HoldToConfirmButton
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.SheetTitle
 import app.feltbook.core.ui.component.discardAmountBody
 import app.feltbook.core.ui.format.MoneyFormat
@@ -34,12 +36,14 @@ import app.feltbook.feature.game.R
 
 /** «Оплата · Борис» (обратимое) и «Выплатить · Саша» (деньги на руки, удержание). */
 @Composable
-fun PaySheet(ui: PayUi, onAction: (TableAction) -> Unit) {
+fun PaySheet(ui: PayUi, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState? = null) {
     FeltbookSheet(
         onDismiss = { onAction(TableAction.DismissSheet) },
         hasInput = ui.entry.value != ui.current && !ui.entry.isEmpty,
         discardBody = discardAmountBody(MoneyFormat.number(ui.entry.value)),
         contentSpacing = 12.dp,
+        snackbarHostState = snackbar,
+        bottomBar = { PayActions(ui = ui, onAction = onAction) },
     ) {
         PayContent(ui = ui, onAction = onAction)
     }
@@ -60,6 +64,11 @@ fun ColumnScope.PayContent(ui: PayUi, onAction: (TableAction) -> Unit) {
         error = ui.error?.resolve(),
         onAction = onAction,
     )
+}
+
+/** «Принять N ₽» / удержание «Выплатил N ₽» — закреплены внизу шторки. */
+@Composable
+fun ColumnScope.PayActions(ui: PayUi, onAction: (TableAction) -> Unit) {
     if (ui.payout) {
         HoldToConfirmButton(
             title = stringResource(R.string.payout_confirm, MoneyFormat.rub(ui.entry.value)),
@@ -103,7 +112,7 @@ internal fun ColumnScope.PayInput(
     ) {
         AmountText(
             text = MoneyFormat.rub(entry.value),
-            style = type.amountHero,
+            style = if (LocalCompactSheet.current) type.amountInput else type.amountHero,
             color = if (entry.isEmpty) colors.muted else colors.ink,
             textAlign = TextAlign.Center,
         )

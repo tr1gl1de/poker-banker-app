@@ -55,6 +55,14 @@ class SettlementScreenTest {
         ).joinToString("\n")
         assertEquals(expected, text)
     }
+
+    @Test
+    fun shareTextMarksPlayersStillSeated() {
+        val resources = RuntimeEnvironment.getApplication().resources
+        val text = settlementShareText(resources, PreviewSettlementData.stillPlaying(), ZoneId.of("Europe/Moscow"))
+        assert(text.contains("Андрей — ещё играет")) { text }
+        assert(text.contains("Влад — ещё играет")) { text }
+    }
 }
 
 private fun nb(text: String): String = text.replace(' ', MoneyFormat.NBSP)

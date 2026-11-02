@@ -1,5 +1,7 @@
 package app.feltbook.feature.game
 
+import androidx.compose.runtime.CompositionLocalProvider
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.feature.game.table.PreviewTableData
 import app.feltbook.feature.game.table.SheetPreviewContent
 import app.feltbook.feature.game.table.TableUiState
@@ -34,6 +36,15 @@ class SheetsScreenshotTest {
 
     @Test
     fun buyInFontScale200() = sheet(PreviewTableData.buyIn(), fontScale = 2f)
+
+    /** Низкий экран (Redmi 6A): меньше сумма, фишки 48 dp, без подсказки. */
+    @Test
+    fun buyInCompact() = captureScreen {
+        CompositionLocalProvider(LocalCompactSheet provides true) { SheetPreviewContent(PreviewTableData.buyIn()) }
+    }
+
+    @Test
+    fun buyInEmpty() = sheet(PreviewTableData.buyIn(chips = 0))
 
     @Test
     fun buyInSuspicious() = sheet(PreviewTableData.suspiciousBuyIn())

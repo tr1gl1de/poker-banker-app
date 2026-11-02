@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
@@ -66,7 +67,7 @@ class TableScenarioTest {
     private val names = FakePlayerNameRepository()
     private val settings = FakeSettingsRepository(AppSettings(lastBankerName = "Саша"))
 
-    private fun key(key: KeypadKey) = rule.onNodeWithTag(keypadTestTag(key)).performClick()
+    private fun key(key: KeypadKey) = rule.onNodeWithTag(keypadTestTag(key)).performScrollTo().performClick()
 
     /** Набрать сумму на своей клавиатуре: «3753» → 3, 7, 5, 3; «1000» → 1, 000. */
     private fun type(amount: String) {

@@ -146,7 +146,7 @@ private class MapperContext(
 
     fun sheet(input: SheetInput, games: List<GameSnapshot>, directory: List<PlayerName>): SheetUi? = when (input) {
         is SheetInput.Card -> card(input.playerId)
-        is SheetInput.BuyIn -> buyIn(input)
+        is SheetInput.BuyIn -> buyIn(input, games, directory)
         is SheetInput.NewPlayer -> newPlayer(input, games, directory)
         is SheetInput.Pay -> pay(input)
         is SheetInput.CashOut -> cashOut(input)
@@ -319,9 +319,15 @@ private class MapperContext(
         )
     }
 
-    private fun buyIn(input: SheetInput.BuyIn): BuyInUi? {
+    private fun buyIn(input: SheetInput.BuyIn, games: List<GameSnapshot>, directory: List<PlayerName>): BuyInUi? {
         val player = state.player(input.playerId)?.takeUnless { it.isVoid } ?: return null
         val quote = Pricing.quoteBuyIn(snapshot, input.playerId, input.entry.value)
+        // Вернувшийся (или ещё не покупавший) — проверить старый долг из прошлых игр, как при посадке.
+        val warning = if (quote.isFirstBuyIn || quote.isReturn) {
+            debtWarning(PlayerNames.normalize(player.player.name), games, directory)
+        } else {
+            null
+        }
         return BuyInUi(
             playerId = input.playerId.key(),
             name = player.player.name,
@@ -335,10 +341,13 @@ private class MapperContext(
             minBuyIn = rules.minBuyIn,
             rakePercent = rakePercent,
             split = rules.splitPayment,
-            payment = input.payment,
+            payment = if (warning != null && !input.paymentTouched) BuyInPayment.PAID else input.payment,
             quote = quote,
             lastAmount = lastPurchase(input.playerId),
             busy = busy,
+            oldDebt = warning,
+            debtCollapsed = input.debtCollapsed,
+            debtPay = input.debtPay,
         )
     }
 
@@ -349,6 +358,21 @@ private class MapperContext(
         }.mapNotNull { it.reversesEntryId }.toSet()
         return snapshot.entries.lastOrNull { it.type == EntryType.BUY_IN && it.playerId == id && it.id !in reversed }
             ?.amount
+    }
+
+    /** Старый долг человека по имени в других играх (предупреждение при посадке и возврате). */
+    fun debtWarning(name: String, games: List<GameSnapshot>, directory: List<PlayerName>): DebtWarningUi? {
+        val list = Debts.forName(name, games, directory, excludeGameId = snapshot.game.id)
+        if (list.isEmpty()) return null
+        val oldest = list.minBy { it.since }
+        return DebtWarningUi(
+            name = name,
+            total = list.sumOf { it.amount },
+            since = oldest.since,
+            oldestGameTitle = oldest.gameTitle,
+            days = ((now - oldest.since) / 1.days).toLong(),
+            games = list.map { it.gameId }.distinct().size,
+        )
     }
 
     private fun newPlayer(
@@ -370,27 +394,9 @@ private class MapperContext(
                 else -> null
             }
         }
-        val debts = if (normalized.isEmpty() || problem != null) {
-            emptyList()
-        } else {
-            Debts.forName(normalized, games, directory, excludeGameId = snapshot.game.id)
-        }
-        val warning = debts.takeIf { it.isNotEmpty() }?.let { list ->
-            val oldest = list.minBy { it.since }
-            DebtWarningUi(
-                name = normalized,
-                total = list.sumOf { it.amount },
-                since = oldest.since,
-                oldestGameTitle = oldest.gameTitle,
-                days = ((now - oldest.since) / 1.days).toLong(),
-                games = list.map { it.gameId }.distinct().size,
-            )
-        }
-        val payment = if (warning != null && !input.paymentTouched) {
-            BuyInPayment.PAID
-        } else {
-            input.payment
-        }
+        val warning = if (normalized.isEmpty() || problem != null) null else debtWarning(normalized, games, directory)
+        // По умолчанию «В долг» (ТЗ §3.7); «Оплачено сейчас» — только для имени со старым долгом (QUESTIONS №11).
+        val payment = if (warning != null && !input.paymentTouched) BuyInPayment.PAID else input.payment
         return NewPlayerUi(
             name = input.name,
             suggestions = if (input.amountFocused) {
@@ -400,7 +406,7 @@ private class MapperContext(
                     .filter { it != normalized }
             },
             nameProblem = problem,
-            debt = warning,
+            oldDebt = warning,
             debtCollapsed = input.debtCollapsed,
             amountFocused = input.amountFocused,
             entry = input.entry,

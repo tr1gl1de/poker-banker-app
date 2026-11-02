@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.feltbook.core.ui.R
 import app.feltbook.core.ui.format.MoneyFormat
 import app.feltbook.core.ui.format.pluralQuantity
@@ -103,10 +106,11 @@ fun ChipDenomination(denom: ChipDenom, selected: Boolean, onClick: () -> Unit, m
     val chipColor = denom.color(colors.chips)
     val description =
         pluralStringResource(R.plurals.chips_count, pluralQuantity(denom.amount), MoneyFormat.number(denom.amount))
+    val scale = chipScale()
     Box(
         modifier =
             modifier
-                .size(size = FeltbookDimens.chip)
+                .size(size = FeltbookDimens.chip * scale)
                 .then(
                     if (selected) {
                         Modifier
@@ -122,15 +126,15 @@ fun ChipDenomination(denom: ChipDenom, selected: Boolean, onClick: () -> Unit, m
                         drawCircle(colors.brass, radius = radius + gap + ring / 2, style = Stroke(width = ring))
                     }
                     drawCircle(chipColor, radius = radius)
-                    val edge = FeltbookDimens.chipEdgeStroke.toPx()
+                    val edge = FeltbookDimens.chipEdgeStroke.toPx() * scale
                     dashedCircle(
                         color = colors.ivory,
-                        radius = FeltbookDimens.chipEdge.toPx() / 2 - edge / 2,
+                        radius = FeltbookDimens.chipEdge.toPx() * scale / 2 - edge / 2,
                         strokeWidth = edge,
                         dashes = CHIP_EDGE_DASHES,
                     )
                     val inner = FeltbookDimens.chipInnerStroke.toPx()
-                    val centerRadius = FeltbookDimens.chipCenter.toPx() / 2
+                    val centerRadius = FeltbookDimens.chipCenter.toPx() * scale / 2
                     drawCircle(chipColor, radius = centerRadius)
                     drawCircle(colors.chipInnerRing, radius = centerRadius - inner / 2, style = Stroke(width = inner))
                 }.clip(CircleShape)
@@ -157,7 +161,7 @@ fun LastAmountChip(amount: Long, selected: Boolean, onClick: () -> Unit, modifie
     Box(
         modifier =
             modifier
-                .size(size = FeltbookDimens.chip)
+                .size(size = FeltbookDimens.chip * chipScale())
                 .drawBehind {
                     val radius = size.minDimension / 2
                     if (selected) {
@@ -175,11 +179,13 @@ fun LastAmountChip(amount: Long, selected: Boolean, onClick: () -> Unit, modifie
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clearAndSetSemantics {}) {
             Text(stringResource(R.string.chip_last_line1), style = type.tinyBold, color = colors.brassLight)
-            Text(
+            // Компактная фишка 48 dp: «прошлый» уменьшается, а не переносится по буквам.
+            BasicText(
                 text = stringResource(R.string.chip_last_line2),
-                style = type.tinyBold,
-                color = colors.brassLight,
-                textAlign = TextAlign.Center,
+                style = type.tinyBold.merge(color = colors.brassLight, textAlign = TextAlign.Center),
+                maxLines = 1,
+                softWrap = false,
+                autoSize = TextAutoSize.StepBased(minFontSize = LastChipMinFont, maxFontSize = type.tinyBold.fontSize),
             )
         }
     }
@@ -241,3 +247,10 @@ private fun ChipDenominationRowPreview() {
         }
     }
 }
+
+/** Компактная шторка (низкий экран): фишки 48 dp вместо 64. */
+@Composable
+private fun chipScale(): Float = if (LocalCompactSheet.current) COMPACT_CHIP_SCALE else 1f
+
+private const val COMPACT_CHIP_SCALE = 0.75f
+private val LastChipMinFont = 7.sp

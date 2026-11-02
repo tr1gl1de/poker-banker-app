@@ -25,6 +25,7 @@ import app.feltbook.core.ui.component.BreakdownList
 import app.feltbook.core.ui.component.BreakdownRow
 import app.feltbook.core.ui.component.FeltFilterChip
 import app.feltbook.core.ui.component.FeltbookSheet
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.SheetTitle
 import app.feltbook.core.ui.component.discardAmountBody
 import app.feltbook.core.ui.format.MoneyFormat
@@ -46,13 +47,20 @@ fun DebtPaySheet(sheet: DebtPaySheetUi, busy: Boolean, onAction: (DebtsAction) -
         hasInput = !sheet.entry.isEmpty && sheet.amount != sheet.card.amount,
         discardBody = discardAmountBody(MoneyFormat.number(sheet.amount)),
         contentSpacing = 12.dp,
+        // Главная кнопка закреплена внизу: на низких экранах (Redmi 6A) она иначе уходит под навигацию.
+        bottomBar = { DebtPayConfirmButton(sheet = sheet, busy = busy, onAction = onAction) },
     ) {
-        DebtPayContent(sheet = sheet, busy = busy, onAction = onAction)
+        DebtPayContent(sheet = sheet, busy = busy, onAction = onAction, showConfirm = false)
     }
 }
 
 @Composable
-internal fun ColumnScope.DebtPayContent(sheet: DebtPaySheetUi, busy: Boolean, onAction: (DebtsAction) -> Unit) {
+internal fun ColumnScope.DebtPayContent(
+    sheet: DebtPaySheetUi,
+    busy: Boolean,
+    onAction: (DebtsAction) -> Unit,
+    showConfirm: Boolean = true,
+) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     val zone = LocalHistoryTimeZone.current
@@ -72,7 +80,7 @@ internal fun ColumnScope.DebtPayContent(sheet: DebtPaySheetUi, busy: Boolean, on
     ) {
         AmountText(
             text = MoneyFormat.rub(sheet.amount),
-            style = type.amountHero,
+            style = if (LocalCompactSheet.current) type.amountInput else type.amountHero,
             color = if (sheet.entry.isEmpty) colors.muted else colors.ink,
             textAlign = TextAlign.Center,
         )
@@ -103,6 +111,11 @@ internal fun ColumnScope.DebtPayContent(sheet: DebtPaySheetUi, busy: Boolean, on
         total = BreakdownRow(stringResource(R.string.debts_pay_row_remaining), MoneyFormat.rub(sheet.remaining)),
     )
     AmountKeypad(entry = sheet.entry, onEntryChange = { onAction(DebtsAction.PayEntry(it)) })
+    if (showConfirm) DebtPayConfirmButton(sheet = sheet, busy = busy, onAction = onAction)
+}
+
+@Composable
+private fun DebtPayConfirmButton(sheet: DebtPaySheetUi, busy: Boolean, onAction: (DebtsAction) -> Unit) {
     BrassButton(
         text = if (sheet.entry.isEmpty) {
             stringResource(R.string.debts_pay_confirm_empty)

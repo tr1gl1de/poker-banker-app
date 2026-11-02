@@ -73,6 +73,8 @@ fun TableRouteScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
+    // Отдельный хост в окне шторки: окно шторки выше окна экрана, и snackbar экрана был бы под ней.
+    val sheetSnackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val resources = LocalResources.current
     val haptic = LocalHapticFeedback.current
@@ -83,14 +85,15 @@ fun TableRouteScreen(
     val gone by rememberUpdatedState(onGameGone)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
+            val host = if (viewModel.isSheetOpen()) sheetSnackbar else snackbar
             when (event) {
                 is TableEvent.Undoable -> scope.launch {
-                    val result = snackbar.showUndoSnackbar(event.message.resolve(resources), undoLabel)
+                    val result = host.showUndoSnackbar(event.message.resolve(resources), undoLabel)
                     if (result == SnackbarResult.ActionPerformed) viewModel.onAction(TableAction.Undo(event.token))
                 }
 
                 is TableEvent.Message -> scope.launch {
-                    snackbar.showUndoSnackbar(event.message.resolve(resources), actionLabel = null)
+                    host.showUndoSnackbar(event.message.resolve(resources), actionLabel = null)
                 }
 
                 TableEvent.OpenSettlement -> settlement()
@@ -103,7 +106,12 @@ fun TableRouteScreen(
             }
         }
     }
-    TableScreen(state = state, onAction = viewModel::onAction, snackbarHostState = snackbar)
+    TableScreen(
+        state = state,
+        onAction = viewModel::onAction,
+        snackbarHostState = snackbar,
+        sheetSnackbarHostState = sheetSnackbar,
+    )
 }
 
 /** Стол (m3-ui-spec §5.3): на телефоне — список и шторки, на ширине ≥ 600 dp — список + карточка игрока. */
@@ -115,6 +123,7 @@ fun TableScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     listState: LazyListState = rememberLazyListState(),
     forceSinglePane: Boolean = false,
+    sheetSnackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     if (!forceSinglePane && isTwoPane()) {
         TableTwoPane(state = state, onAction = onAction, snackbarHostState = snackbarHostState, modifier = modifier)
@@ -129,7 +138,7 @@ fun TableScreen(
             TableFabAndSnackbar(state = state, onAction = onAction, snackbarHostState = snackbarHostState)
         }
     }
-    TableSheets(state = state, onAction = onAction)
+    TableSheets(state = state, onAction = onAction, snackbar = sheetSnackbarHostState)
     TableDialogs(state = state, onAction = onAction)
 }
 
@@ -339,14 +348,14 @@ private fun ScoreboardCell.toKind(): BreakdownKind = when (this) {
 
 /** Шторки — по состоянию экрана. */
 @Composable
-internal fun TableSheets(state: TableUiState, onAction: (TableAction) -> Unit) {
+internal fun TableSheets(state: TableUiState, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState) {
     when (val sheet = state.sheet) {
-        is PlayerCardUi -> PlayerCardSheet(card = sheet, now = state.now, onAction = onAction)
-        is BuyInUi -> BuyInSheet(ui = sheet, onAction = onAction)
-        is NewPlayerUi -> NewPlayerSheet(ui = sheet, onAction = onAction)
-        is PayUi -> PaySheet(ui = sheet, onAction = onAction)
-        is CashOutUi -> CashOutSheet(ui = sheet, onAction = onAction)
-        is BreakdownUi -> BreakdownSheet(ui = sheet, onAction = onAction)
+        is PlayerCardUi -> PlayerCardSheet(card = sheet, now = state.now, onAction = onAction, snackbar = snackbar)
+        is BuyInUi -> BuyInSheet(ui = sheet, onAction = onAction, snackbar = snackbar)
+        is NewPlayerUi -> NewPlayerSheet(ui = sheet, onAction = onAction, snackbar = snackbar)
+        is PayUi -> PaySheet(ui = sheet, onAction = onAction, snackbar = snackbar)
+        is CashOutUi -> CashOutSheet(ui = sheet, onAction = onAction, snackbar = snackbar)
+        is BreakdownUi -> BreakdownSheet(ui = sheet, onAction = onAction, snackbar = snackbar)
         null -> Unit
     }
 }

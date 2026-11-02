@@ -153,6 +153,11 @@ fun settlementShareText(resources: Resources, state: SettlementUiState, zone: Zo
             val balance = row.balanceAtExit ?: 0L
             add(
                 when {
+                    row.status == PlayerStatus.PLAYING -> resources.getString(
+                        R.string.settlement_share_playing,
+                        row.name,
+                    )
+
                     balance < 0 -> resources.getString(
                         R.string.settlement_share_pays,
                         row.name,
@@ -727,7 +732,10 @@ private fun Bottom(state: SettlementUiState, settlement: GameSettlement, onActio
     }
     val hint = when {
         unpaid > 0 -> stringResource(R.string.settlement_close_unpaid_hint, MoneyFormat.rub(unpaid))
-        debts -> stringResource(R.string.settlement_close_with_debt_hint, MoneyFormat.rub(settlement.rakeDue))
+
+        debts && settlement.rakeDue > 0 ->
+            stringResource(R.string.settlement_close_with_debt_hint, MoneyFormat.rub(settlement.rakeDue))
+
         else -> stringResource(UiR.string.common_hold)
     }
     Row(

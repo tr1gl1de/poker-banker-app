@@ -15,6 +15,10 @@ sealed interface SheetInput {
         val playerId: PlayerId,
         val entry: AmountEntry = AmountEntry(),
         val payment: BuyInPayment = BuyInPayment.DEBT,
+        val paymentTouched: Boolean = false,
+        val debtCollapsed: Boolean = false,
+        /** «Погасить сейчас» старый долг вернувшегося игрока (m3-ui-spec §5.4). */
+        val debtPay: AmountEntry? = null,
     ) : SheetInput
 
     data class NewPlayer(
@@ -70,3 +74,37 @@ data class TableInputs(
     val busy: Boolean = false,
     val selected: PlayerId? = null,
 )
+
+/** Общие поля шторок со старым долгом: «Новый игрок» и закуп/возврат. */
+data class DebtFields(
+    val debtPay: AmountEntry?,
+    val collapsed: Boolean,
+    val payment: BuyInPayment,
+    val touched: Boolean,
+)
+
+fun SheetInput.debtFields(): DebtFields? = when (this) {
+    is SheetInput.NewPlayer -> DebtFields(debtPay, debtCollapsed, payment, paymentTouched)
+    is SheetInput.BuyIn -> DebtFields(debtPay, debtCollapsed, payment, paymentTouched)
+    else -> null
+}
+
+fun SheetInput.withDebtFields(fields: DebtFields): SheetInput = when (this) {
+    is SheetInput.NewPlayer ->
+        copy(
+            debtPay = fields.debtPay,
+            debtCollapsed = fields.collapsed,
+            payment = fields.payment,
+            paymentTouched = fields.touched,
+        )
+
+    is SheetInput.BuyIn ->
+        copy(
+            debtPay = fields.debtPay,
+            debtCollapsed = fields.collapsed,
+            payment = fields.payment,
+            paymentTouched = fields.touched,
+        )
+
+    else -> this
+}

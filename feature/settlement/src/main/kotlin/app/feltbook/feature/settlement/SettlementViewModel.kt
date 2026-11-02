@@ -52,6 +52,8 @@ data class SettlementUiState(
     val suits: Map<String, Suit> = emptyMap(),
     val chipsDialog: Boolean = false,
     val busy: Boolean = false,
+    /** `lastSeq` снимка, по которому построен показанный итог: закрываем именно его. */
+    val baseSeq: Long = 0,
 ) {
     val hasDebts: Boolean get() = settlement?.unpaidDebts?.isNotEmpty() == true
 
@@ -113,25 +115,36 @@ class SettlementViewModel @Inject constructor(
     fun onAction(action: SettlementAction) {
         when (action) {
             SettlementAction.Close -> {
-                val snap = snapshot.value ?: return
-                val settlement = Settlements.compute(snap)
+                val settlement = uiState.value.settlement ?: return
                 if (CloseConfirmation.CHIPS_NOT_RECONCILED in settlement.requiredConfirmations) {
                     dialog.update { true }
                 } else {
-                    close(snap, settlement)
+                    closeDisplayed()
                 }
             }
 
             SettlementAction.ConfirmChipsMismatch -> {
                 dialog.update { false }
-                val snap = snapshot.value ?: return
-                close(snap, Settlements.compute(snap))
+                closeDisplayed()
             }
 
             SettlementAction.DismissDialog -> dialog.update { false }
 
             else -> Unit
         }
+    }
+
+    /**
+     * Закрыть ровно тот итог, что видел банкир: подтверждения и рейк — из показанного состояния, снимок — с тем же
+     * `lastSeq`. Если журнал успел измениться, ничего не пишем: экран перерисуется с новыми цифрами.
+     */
+    @Suppress("ReturnCount")
+    private fun closeDisplayed() {
+        val shown = uiState.value
+        val settlement = shown.settlement ?: return
+        val snap = snapshot.value ?: return
+        if (snap.lastSeq != shown.baseSeq) return
+        close(snap, settlement)
     }
 
     /** Подтверждения: hold-кнопка с подписью долга/долга банкира + диалог расхождения фишек — это и есть согласие. */
@@ -193,5 +206,6 @@ fun buildSettlementUiState(snapshot: GameSnapshot?, now: Instant): SettlementUiS
         duration = (game.closedAt ?: now) - game.createdAt,
         settlement = Settlements.compute(snapshot),
         suits = suits,
+        baseSeq = snapshot.lastSeq,
     )
 }

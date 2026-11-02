@@ -9,6 +9,7 @@ import app.feltbook.core.domain.model.GameStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -64,6 +65,7 @@ class SettlementViewModelTest {
     @Test
     fun closeWritesRakePaidAndClosesGame() = runTest {
         open(PreviewSettlementData.snapshot())
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.events.test {
             viewModel.onAction(SettlementAction.Close)
             assertEquals(SettlementEvent.Closed, awaitItem())
@@ -77,11 +79,38 @@ class SettlementViewModelTest {
     @Test
     fun closeWithDebtIsAllowedByHold() = runTest {
         open(PreviewSettlementData.snapshot(vladPays = false))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
         viewModel.events.test {
             viewModel.onAction(SettlementAction.Close)
             assertEquals(SettlementEvent.Closed, awaitItem())
         }
         assertEquals(GameStatus.CLOSED, repository.snapshot(snapshot.game.id).game.status)
+    }
+
+    @Test
+    fun chipsMismatchNeedsDialogConfirmation() = runTest {
+        // Влад сдал 1 200 вместо 1 247: сдано на 47 фишек меньше.
+        open(PreviewSettlementData.snapshot(vladChips = 1_200))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        viewModel.events.test {
+            viewModel.onAction(SettlementAction.Close)
+            expectNoEvents()
+            assertTrue(viewModel.uiState.value.chipsDialog)
+            assertEquals(GameStatus.SETTLING, repository.snapshot(snapshot.game.id).game.status)
+
+            viewModel.onAction(SettlementAction.ConfirmChipsMismatch)
+            assertEquals(SettlementEvent.Closed, awaitItem())
+        }
+        assertFalse(viewModel.uiState.value.chipsDialog)
+        assertEquals(GameStatus.CLOSED, repository.snapshot(snapshot.game.id).game.status)
+    }
+
+    @Test
+    fun closeIgnoresStaleDisplayedState() = runTest {
+        open(PreviewSettlementData.snapshot())
+        // Без подписчика итог не показан — закрывать нечего.
+        viewModel.onAction(SettlementAction.Close)
+        assertEquals(GameStatus.SETTLING, repository.snapshot(snapshot.game.id).game.status)
     }
 
     @Test

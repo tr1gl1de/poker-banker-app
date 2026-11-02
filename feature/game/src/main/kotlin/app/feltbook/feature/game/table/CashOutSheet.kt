@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +31,8 @@ import app.feltbook.core.ui.component.AmountKeypad
 import app.feltbook.core.ui.component.AmountRowLayout
 import app.feltbook.core.ui.component.AmountText
 import app.feltbook.core.ui.component.BannerVariant
+import app.feltbook.core.ui.component.BrassButton
+import app.feltbook.core.ui.component.BrassButtonStyle
 import app.feltbook.core.ui.component.BreakdownList
 import app.feltbook.core.ui.component.BreakdownRow
 import app.feltbook.core.ui.component.DangerOutlineButton
@@ -39,6 +42,8 @@ import app.feltbook.core.ui.component.FeltbookSheet
 import app.feltbook.core.ui.component.HoldButtonSize
 import app.feltbook.core.ui.component.HoldToConfirmButton
 import app.feltbook.core.ui.component.InfoBanner
+import app.feltbook.core.ui.component.LocalCompactSheet
+import app.feltbook.core.ui.component.LocalSheetDismissRequest
 import app.feltbook.core.ui.component.OutlineButton
 import app.feltbook.core.ui.component.PlayerAvatar
 import app.feltbook.core.ui.component.ResultPanel
@@ -60,11 +65,34 @@ import kotlin.math.abs
 
 /** Выход: вид определяется `CashOutQuote.balance` (pay / owe / even, m3-ui-spec §5.6). */
 @Composable
-fun CashOutSheet(ui: CashOutUi, onAction: (TableAction) -> Unit) {
+fun CashOutSheet(ui: CashOutUi, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState? = null) {
     FeltbookSheet(
         onDismiss = { onAction(TableAction.DismissSheet) },
         hasInput = !ui.chips.isEmpty,
         discardBody = discardAmountBody(MoneyFormat.number(ui.chips.value)),
+        snackbarHostState = snackbar,
+        bottomBar = {
+            when {
+                ui.partial != null -> PartialActions(ui = ui, onAction = onAction)
+
+                ui.recipients != null -> OutlineButton(
+                    text = stringResource(UiR.string.common_cancel),
+                    onClick = { onAction(TableAction.CancelPicker) },
+                    icon = FeltbookIcons.Close,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                // Пока открыта клавиатура — только «Готово»: расчёт и кнопки появятся после ввода фишек.
+                ui.focus != CashOutFocus.NONE -> BrassButton(
+                    text = stringResource(UiR.string.common_done),
+                    onClick = { onAction(TableAction.KeypadDone) },
+                    style = BrassButtonStyle.Flat52,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                else -> CashOutActions(ui = ui, onAction = onAction)
+            }
+        },
     ) {
         when {
             ui.partial != null -> {
@@ -119,13 +147,6 @@ fun ColumnScope.CashOutContent(ui: CashOutUi, onAction: (TableAction) -> Unit) {
         )
     }
     if (ui.focus != CashOutFocus.NONE) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            DialogTextButton(
-                text = stringResource(UiR.string.common_done),
-                onClick = { onAction(TableAction.KeypadDone) },
-                destructive = false,
-            )
-        }
         AmountKeypad(
             entry = if (ui.focus == CashOutFocus.TIP) ui.customTip else ui.chips,
             onEntryChange = { onAction(TableAction.EntryChange(it)) },
@@ -166,7 +187,6 @@ fun ColumnScope.CashOutContent(ui: CashOutUi, onAction: (TableAction) -> Unit) {
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
     )
-    CashOutActions(ui = ui, onAction = onAction)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -369,7 +389,9 @@ private fun CashOutResult(ui: CashOutUi) {
 }
 
 @Composable
-private fun CashOutActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
+internal fun CashOutActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
+    // «Отмена» — как свайп вниз: с введёнными фишками спросит «Отменить ввод?».
+    val dismiss = LocalSheetDismissRequest.current
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     val balance = ui.balance
@@ -393,7 +415,7 @@ private fun CashOutActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
                     )
                     OutlineButton(
                         text = stringResource(UiR.string.common_cancel),
-                        onClick = { onAction(TableAction.DismissSheet) },
+                        onClick = dismiss,
                         icon = FeltbookIcons.Close,
                         modifier = Modifier.weight(weight = 1f),
                     )
@@ -422,13 +444,15 @@ private fun CashOutActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
                         modifier = Modifier.weight(weight = 1f),
                     )
                 }
-                Text(
-                    text = stringResource(R.string.cash_out_not_paid_hint, MoneyFormat.rub(-balance)),
-                    style = type.small,
-                    color = colors.ledger,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                if (!LocalCompactSheet.current) {
+                    Text(
+                        text = stringResource(R.string.cash_out_not_paid_hint, MoneyFormat.rub(-balance)),
+                        style = type.small,
+                        color = colors.ledger,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             else -> {
@@ -440,7 +464,7 @@ private fun CashOutActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
                 )
                 OutlineButton(
                     text = stringResource(UiR.string.common_cancel),
-                    onClick = { onAction(TableAction.DismissSheet) },
+                    onClick = dismiss,
                     icon = FeltbookIcons.Close,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -456,7 +480,6 @@ private fun ColumnScope.PartialContent(ui: CashOutUi, onAction: (TableAction) ->
     val type = FeltbookTheme.typography
     val entry = ui.partial ?: return
     val receiving = ui.balance < 0
-    val rest = (abs(ui.balance) - entry.value).coerceAtLeast(0)
     SheetTitle(
         title =
             if (receiving) {
@@ -468,7 +491,7 @@ private fun ColumnScope.PartialContent(ui: CashOutUi, onAction: (TableAction) ->
     )
     AmountText(
         text = MoneyFormat.rub(entry.value),
-        style = type.amountHero,
+        style = if (LocalCompactSheet.current) type.amountInput else type.amountHero,
         color = if (entry.isEmpty) colors.muted else colors.ink,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth(),
@@ -476,6 +499,14 @@ private fun ColumnScope.PartialContent(ui: CashOutUi, onAction: (TableAction) ->
     AmountKeypad(entry = entry, onEntryChange = {
         onAction(TableAction.EntryChange(it))
     }, maxValue = ui.partialMax.coerceAtLeast(0))
+}
+
+/** Удержание «Получил / Выплатил N ₽», «Пока ничего не выплатил», «Отмена» — закреплены внизу. */
+@Composable
+private fun ColumnScope.PartialActions(ui: CashOutUi, onAction: (TableAction) -> Unit) {
+    val entry = ui.partial ?: return
+    val receiving = ui.balance < 0
+    val rest = (abs(ui.balance) - entry.value).coerceAtLeast(0)
     HoldToConfirmButton(
         title =
             stringResource(
@@ -547,10 +578,4 @@ private fun ColumnScope.TipRecipientContent(ui: CashOutUi, onAction: (TableActio
             Text(text = recipient.name, style = type.title, color = colors.ink, maxLines = 1)
         }
     }
-    OutlineButton(
-        text = stringResource(UiR.string.common_cancel),
-        onClick = { onAction(TableAction.CancelPicker) },
-        icon = FeltbookIcons.Close,
-        modifier = Modifier.fillMaxWidth(),
-    )
 }

@@ -26,6 +26,7 @@ import app.feltbook.core.ui.component.AmountText
 import app.feltbook.core.ui.component.BrassButton
 import app.feltbook.core.ui.component.BrassButtonStyle
 import app.feltbook.core.ui.component.FeltbookSheet
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.SegmentedToggle
 import app.feltbook.core.ui.component.SheetTitle
 import app.feltbook.core.ui.format.MoneyFormat
@@ -44,13 +45,19 @@ fun RulesEditorSheet(editor: RulesEditorUi, onAction: (SettingsAction) -> Unit) 
         hasInput = editor.draft != editor.base,
         discardBody = stringResource(R.string.settings_rules_discard_body),
         contentSpacing = 12.dp,
+        // «Сохранить» закреплена внизу: на низких экранах (Redmi 6A) она иначе уходит под навигацию.
+        bottomBar = { RulesSaveButton(editor = editor, onAction = onAction) },
     ) {
-        RulesEditorContent(editor = editor, onAction = onAction)
+        RulesEditorContent(editor = editor, onAction = onAction, showSave = false)
     }
 }
 
 @Composable
-internal fun ColumnScope.RulesEditorContent(editor: RulesEditorUi, onAction: (SettingsAction) -> Unit) {
+internal fun ColumnScope.RulesEditorContent(
+    editor: RulesEditorUi,
+    onAction: (SettingsAction) -> Unit,
+    showSave: Boolean = true,
+) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     SheetTitle(title = stringResource(editor.field.title()))
@@ -101,7 +108,7 @@ internal fun ColumnScope.RulesEditorContent(editor: RulesEditorUi, onAction: (Se
         ) {
             AmountText(
                 text = editorValue(editor),
-                style = type.amountHero,
+                style = if (LocalCompactSheet.current) type.amountInput else type.amountHero,
                 color = if (editor.entry.isEmpty) colors.muted else colors.ink,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
@@ -116,6 +123,11 @@ internal fun ColumnScope.RulesEditorContent(editor: RulesEditorUi, onAction: (Se
             maxValue = editor.maxValue,
         )
     }
+    if (showSave) RulesSaveButton(editor = editor, onAction = onAction)
+}
+
+@Composable
+private fun RulesSaveButton(editor: RulesEditorUi, onAction: (SettingsAction) -> Unit) {
     BrassButton(
         text = stringResource(UiR.string.common_save),
         onClick = { onAction(SettingsAction.SaveRules) },

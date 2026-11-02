@@ -30,7 +30,7 @@ internal object PreviewSettlementData {
     private fun GameSnapshot.id(name: String): PlayerId = players.first { it.name == name }.id
 
     /** До выходов Андрея и Влада. [vladPays] — Влад рассчитался полностью или ушёл с долгом. */
-    fun snapshot(allOut: Boolean = true, vladPays: Boolean = true): GameSnapshot {
+    fun snapshot(allOut: Boolean = true, vladPays: Boolean = true, vladChips: Long = 1_247): GameSnapshot {
         val begin = Commands.startGame(
             NewGameInput("Пятничный стол", "Пятничный стол", "Саша", bankerPlays = false, rules = GameRules.DEFAULT),
             activeGame = null,
@@ -55,7 +55,7 @@ internal object PreviewSettlementData {
         if (allOut) {
             s = s.apply(Commands.cashOut(s, s.id("Андрей"), 0, null, SettlementChoice.Full, false, stamp(200)))
             val choice = if (vladPays) SettlementChoice.Full else SettlementChoice.None
-            s = s.apply(Commands.cashOut(s, s.id("Влад"), 1_247, null, choice, false, stamp(210)))
+            s = s.apply(Commands.cashOut(s, s.id("Влад"), vladChips, null, choice, false, stamp(210)))
         }
         return s.apply(Commands.finish(s))
     }

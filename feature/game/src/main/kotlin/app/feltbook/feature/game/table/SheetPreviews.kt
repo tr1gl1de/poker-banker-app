@@ -44,13 +44,26 @@ internal fun SheetPreviewContent(state: TableUiState) {
             PlayerCardContent(card = sheet, now = state.now, onAction = {})
         }
 
-        is BuyInUi -> SheetFrame(spacing = 12.dp) { BuyInContent(ui = sheet, onAction = {}) }
+        // Содержимое + закреплённые внизу действия (в шторке они вне прокрутки).
+        is BuyInUi -> SheetFrame(spacing = 12.dp) {
+            BuyInContent(ui = sheet, onAction = {})
+            IssueButton(quote = sheet.quote, payment = sheet.payment, enabled = sheet.canConfirm, onAction = {})
+        }
 
-        is NewPlayerUi -> SheetFrame { NewPlayerContent(ui = sheet, onAction = {}) }
+        is NewPlayerUi -> SheetFrame {
+            NewPlayerContent(ui = sheet, onAction = {})
+            NewPlayerActions(ui = sheet, onAction = {})
+        }
 
-        is PayUi -> SheetFrame(spacing = 12.dp) { PayContent(ui = sheet, onAction = {}) }
+        is PayUi -> SheetFrame(spacing = 12.dp) {
+            PayContent(ui = sheet, onAction = {})
+            PayActions(ui = sheet, onAction = {})
+        }
 
-        is CashOutUi -> SheetFrame { CashOutContent(ui = sheet, onAction = {}) }
+        is CashOutUi -> SheetFrame {
+            CashOutContent(ui = sheet, onAction = {})
+            CashOutActions(ui = sheet, onAction = {})
+        }
 
         is BreakdownUi -> SheetFrame(spacing = 12.dp) { BreakdownContent(sheet) }
 

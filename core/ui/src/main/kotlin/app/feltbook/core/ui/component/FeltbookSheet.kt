@@ -19,14 +19,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
@@ -48,6 +51,21 @@ import kotlinx.coroutines.launch
 /** Наибольшая ширина шторки на планшете (m3-ui-spec §9). */
 private val SheetMaxWidth = 640.dp
 
+/** Ниже этой высоты окна шторки компактные (Redmi 6A ≈ 360 × 720 dp): меньше сумма, фишки 48 dp, без подсказок. */
+val CompactSheetWindowHeight = 760.dp
+
+/**
+ * `true` внутри [FeltbookSheet] на низком экране. Экраны выбирают меньший стиль суммы и прячут вспомогательные
+ * строки; фишки ([ChipDenomination]) уменьшаются сами.
+ */
+val LocalCompactSheet = staticCompositionLocalOf { false }
+
+/**
+ * Закрыть шторку «как свайпом» из кнопки внутри неё («Отмена»): при введённых данных — через «Отменить ввод?».
+ * Вне [FeltbookSheet] — пустое действие.
+ */
+val LocalSheetDismissRequest = staticCompositionLocalOf<() -> Unit> { {} }
+
 /**
  * Шторка «Сукна» (m3-ui-spec §4.15): `ModalBottomSheet` без промежуточного положения, фон `sheet`, scrim, верх r28
  * с кромкой `sheetEdge`, своя ручка. Содержимое прокручивается (шрифт 200 %).
@@ -56,6 +74,7 @@ private val SheetMaxWidth = 640.dp
  * «Отменить ввод?» ([discardBody] — «Введённая сумма 2 000 не сохранится.»); пустая шторка закрывается сразу.
  * [onDismiss] вызывается после того, как шторка скрылась.
  */
+@Suppress("CyclomaticComplexMethod") // Ветвления раскладки: закреплённая кнопка, snackbar, компактный режим.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeltbookSheet(
@@ -64,6 +83,8 @@ fun FeltbookSheet(
     hasInput: Boolean = false,
     discardBody: String = stringResource(R.string.sheet_discard_body_generic),
     contentSpacing: Dp = 14.dp,
+    snackbarHostState: SnackbarHostState? = null,
+    bottomBar: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hasInputState = rememberUpdatedState(hasInput)
@@ -90,6 +111,14 @@ fun FeltbookSheet(
     val windowHeight = LocalWindowInfo.current.containerSize.height
     val statusBars = WindowInsets.statusBars.getTop(density)
     val maxSheetHeight = with(density) { (windowHeight - statusBars).toDp() } - FeltbookDimens.sheetTopGap
+    val compact = with(density) { windowHeight.toDp() } < CompactSheetWindowHeight
+    val requestDismiss: () -> Unit = {
+        if (hasInputState.value && !allowHide.value) {
+            showDiscard.value = true
+        } else {
+            scope.launch { sheetState.hide() }.invokeOnCompletion { currentOnDismiss() }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = { currentOnDismiss() },
@@ -103,37 +132,78 @@ fun FeltbookSheet(
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0) },
     ) {
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxSheetHeight.coerceAtLeast(FeltbookDimens.minTouchTarget))
-                    .drawWithCache {
-                        val outline = Path().apply {
-                            addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache))
-                        }
-                        val line = 1.dp.toPx()
-                        val top = shape.topStart.toPx(size, this)
-                        onDrawBehind {
-                            clipRect(bottom = top + line) {
-                                drawPath(
-                                    outline,
-                                    colors.sheetEdge,
-                                    style = Stroke(
-                                        width =
-                                            line * 2,
-                                    ),
-                                )
-                            }
-                        }
-                    }.verticalScroll(rememberScrollState())
-                    .navigationBarsPadding()
-                    .imePadding()
-                    .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(space = contentSpacing),
+        CompositionLocalProvider(
+            LocalCompactSheet provides compact,
+            LocalSheetDismissRequest provides requestDismiss,
         ) {
-            SheetDragHandle(modifier = Modifier.align(Alignment.CenterHorizontally))
-            content()
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = maxSheetHeight.coerceAtLeast(FeltbookDimens.minTouchTarget))
+                        .drawWithCache {
+                            val outline = Path().apply {
+                                addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache))
+                            }
+                            val line = 1.dp.toPx()
+                            val top = shape.topStart.toPx(size, this)
+                            onDrawBehind {
+                                clipRect(bottom = top + line) {
+                                    drawPath(outline, colors.sheetEdge, style = Stroke(width = line * 2))
+                                }
+                            }
+                        },
+            ) {
+                Column(modifier = Modifier.fillMaxWidth().imePadding()) {
+                    // Прокручиваемая часть: всё, кроме закреплённой внизу главной кнопки.
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .weight(weight = 1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .then(if (bottomBar == null) Modifier.navigationBarsPadding() else Modifier)
+                                .padding(
+                                    start = 20.dp,
+                                    end = 20.dp,
+                                    top = 10.dp,
+                                    bottom = if (bottomBar == null) SheetBottomPadding else SheetPinnedGap,
+                                ),
+                        verticalArrangement = Arrangement.spacedBy(space = contentSpacing),
+                    ) {
+                        SheetDragHandle(modifier = Modifier.align(Alignment.CenterHorizontally))
+                        content()
+                    }
+                    if (bottomBar != null) {
+                        // Главное действие всегда на экране и над системной навигацией (3 кнопки на Android 9).
+                        Column(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .navigationBarsPadding()
+                                    .padding(
+                                        start = 20.dp,
+                                        end = 20.dp,
+                                        top = SheetPinnedGap,
+                                        bottom = if (compact) SheetPinnedGap else SheetBottomPadding,
+                                    ),
+                            verticalArrangement = Arrangement.spacedBy(space = 8.dp),
+                            content = bottomBar,
+                        )
+                    }
+                }
+                if (snackbarHostState != null) {
+                    // Snackbar в окне шторки: иначе «Отменить» прячется под ней (окно шторки выше окна экрана).
+                    FeltbookSnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
+                                .padding(bottom = SheetSnackbarOffset),
+                    )
+                }
+            }
         }
     }
 
@@ -152,6 +222,10 @@ fun FeltbookSheet(
         )
     }
 }
+
+private val SheetBottomPadding = 24.dp
+private val SheetPinnedGap = 8.dp
+private val SheetSnackbarOffset = 96.dp
 
 /** Текст «Введённая сумма 2 000 не сохранится.» для [FeltbookSheet]. */
 @Composable

@@ -53,6 +53,7 @@
     <string name="settlement_share_pays">%1$s платит %2$s</string>
     <string name="settlement_share_gets">%1$s получает %2$s</string>
     <string name="settlement_share_even">%1$s — квиты</string>
+    <string name="settlement_share_playing">%1$s — ещё играет</string>
     <string name="settlement_share_totals">Рейк заведению %1$s · Банкиру %2$s</string>
     <string name="settlement_share_chips_ok">Фишки сошлись: %1$s</string>
     <string name="settlement_share_chips_diff">Фишки не сошлись: %1$s</string>

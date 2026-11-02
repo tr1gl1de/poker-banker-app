@@ -46,6 +46,7 @@ import app.feltbook.core.ui.component.FeltIconButton
 import app.feltbook.core.ui.component.FeltTextField
 import app.feltbook.core.ui.component.FeltbookDialog
 import app.feltbook.core.ui.component.FeltbookSheet
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.SegmentedToggle
 import app.feltbook.core.ui.component.SegmentedToggleStyle
 import app.feltbook.core.ui.component.SheetTitle
@@ -424,7 +425,18 @@ private fun RuleEditorSheet(editor: RuleEditorUi, rules: NewGameUiState, onActio
 
         RuleField.MIN_PLAY_MINUTES -> stringResource(R.string.rules_edit_minutes)
     }
-    FeltbookSheet(onDismiss = { onAction(NewGameAction.EditorDismiss) }, contentSpacing = 12.dp) {
+    FeltbookSheet(
+        onDismiss = { onAction(NewGameAction.EditorDismiss) },
+        contentSpacing = 12.dp,
+        bottomBar = {
+            BrassButton(
+                text = stringResource(R.string.rules_edit_done),
+                onClick = { onAction(NewGameAction.EditorDone) },
+                style = BrassButtonStyle.Hero64,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+    ) {
         SheetTitle(title = title)
         Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -432,19 +444,13 @@ private fun RuleEditorSheet(editor: RuleEditorUi, rules: NewGameUiState, onActio
         ) {
             AmountText(
                 text = MoneyFormat.number(editor.entry.value),
-                style = type.amountHero,
+                style = if (LocalCompactSheet.current) type.amountInput else type.amountHero,
                 color = if (editor.entry.isEmpty) colors.muted else colors.ink,
                 textAlign = TextAlign.Center,
             )
             Text(text = unit, style = type.caption, color = colors.muted)
         }
         AmountKeypad(entry = editor.entry, onEntryChange = { onAction(NewGameAction.EditorEntry(it)) })
-        BrassButton(
-            text = stringResource(R.string.rules_edit_done),
-            onClick = { onAction(NewGameAction.EditorDone) },
-            style = BrassButtonStyle.Hero64,
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 

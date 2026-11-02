@@ -153,6 +153,7 @@
         <item quantity="other">Выдать %1$s фишки</item>
     </plurals>
     <string name="buy_in_issue_empty">Выдать фишки</string>
+    <string name="buy_in_issue_sub_empty">введите сумму или выберите фишку</string>
     <string name="buy_in_issue_sub_debt">%1$s записать в долг</string>
     <string name="buy_in_issue_sub_paid">%1$s получено сейчас</string>
     <string name="buy_in_issue_sub_split">%1$s сейчас · %2$s в долг</string>

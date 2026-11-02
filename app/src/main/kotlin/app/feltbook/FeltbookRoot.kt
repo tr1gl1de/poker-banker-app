@@ -143,6 +143,7 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
     val destination = entry?.destination
     val tab = destination.tab()
     val snackbar = remember { SnackbarHostState() }
+    val unlockSnackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val counter = remember { EasterEggCounter() }
     val resources = LocalResources.current
@@ -181,7 +182,13 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         containerColor = FeltbookTheme.colors.feltDeep,
-        snackbarHost = { FeltbookSnackbarHost(hostState = snackbar, durationMillis = EASTER_HINT_MILLIS) },
+        snackbarHost = {
+            // «Ещё N…» — короткие подсказки; «Секретный стол открыт · Открыть» — обычные 5 с (+ a11y).
+            Box {
+                FeltbookSnackbarHost(hostState = snackbar, durationMillis = EASTER_HINT_MILLIS)
+                FeltbookSnackbarHost(hostState = unlockSnackbar)
+            }
+        },
         bottomBar = {
             AnimatedVisibility(
                 visible = showBar,
@@ -205,7 +212,8 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
                                 EasterEggTap.Unlocked -> {
                                     onUnlockOdds()
                                     scope.launch {
-                                        val result = snackbar.showUndoSnackbar(
+                                        snackbar.currentSnackbarData?.dismiss()
+                                        val result = unlockSnackbar.showUndoSnackbar(
                                             resources.getString(R.string.easter_unlocked),
                                             actionLabel = resources.getString(R.string.easter_open),
                                         )
@@ -229,5 +237,5 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
     }
 }
 
-/** Snackbar уровня окна — только подсказки пасхалки: короткие, без действия. */
+/** Подсказки пасхалки «Ещё N…» — короткие, без действия. */
 private const val EASTER_HINT_MILLIS = 2_000L

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -53,6 +54,7 @@ import app.feltbook.core.ui.component.FeltTextField
 import app.feltbook.core.ui.component.FeltbookSheet
 import app.feltbook.core.ui.component.InfoBanner
 import app.feltbook.core.ui.component.IssueChipsButton
+import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.OutlineButton
 import app.feltbook.core.ui.component.PlayerAvatar
 import app.feltbook.core.ui.component.SegmentedToggle
@@ -73,14 +75,29 @@ import app.feltbook.feature.game.common.LocalTimeZone
 // ---------- Докуп / закуп / возврат (макет BuyIn) ----------
 
 @Composable
-fun BuyInSheet(ui: BuyInUi, onAction: (TableAction) -> Unit) {
+fun BuyInSheet(ui: BuyInUi, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState? = null) {
+    val debtPay = ui.debtPay
+    val oldDebt = ui.oldDebt
     FeltbookSheet(
         onDismiss = { onAction(TableAction.DismissSheet) },
         hasInput = !ui.entry.isEmpty,
         discardBody = discardAmountBody(MoneyFormat.number(ui.entry.value)),
         contentSpacing = 12.dp,
+        snackbarHostState = snackbar,
+        bottomBar = {
+            if (debtPay != null && oldDebt != null) {
+                DebtPayActions(debt = oldDebt, entry = debtPay, busy = ui.busy, onAction = onAction)
+            } else {
+                IssueButton(quote = ui.quote, payment = ui.payment, enabled = ui.canConfirm, onAction = onAction)
+            }
+        },
     ) {
-        BuyInContent(ui = ui, onAction = onAction)
+        if (debtPay != null && oldDebt != null) {
+            BackHandler { onAction(TableAction.DebtPayCancel) }
+            DebtPayContent(debt = oldDebt, entry = debtPay, onAction = onAction)
+        } else {
+            BuyInContent(ui = ui, onAction = onAction)
+        }
     }
 }
 
@@ -104,6 +121,7 @@ fun ColumnScope.BuyInContent(ui: BuyInUi, onAction: (TableAction) -> Unit) {
         title = stringResource(if (ui.isFirst) R.string.buy_in_title_first else R.string.buy_in_title_rebuy, ui.name),
         subtitle = subtitle,
     )
+    OldDebtBlock(ui = ui, onAction = onAction)
     PurchaseInput(
         entry = ui.entry,
         minBuyIn = ui.minBuyIn,
@@ -115,7 +133,22 @@ fun ColumnScope.BuyInContent(ui: BuyInUi, onAction: (TableAction) -> Unit) {
         payment = ui.payment,
         onAction = onAction,
     )
-    IssueButton(quote = ui.quote, payment = ui.payment, enabled = ui.canConfirm, onAction = onAction)
+    if (ui.oldDebt != null) DebtDefaultHint()
+}
+
+/** Старый долг из прошлых игр: карточка «Погасить сейчас / Посадить с долгом» или свёрнутая строка. */
+@Composable
+internal fun OldDebtBlock(ui: DebtAwareUi, onAction: (TableAction) -> Unit) {
+    val debt = ui.oldDebt ?: return
+    if (ui.debtCollapsed) {
+        Text(
+            text = stringResource(R.string.debt_warning_collapsed, MoneyFormat.rub(debt.total)),
+            style = FeltbookTheme.typography.small,
+            color = FeltbookTheme.colors.owe,
+        )
+    } else {
+        DebtWarningCard(debt = debt, onAction = onAction)
+    }
 }
 
 @Composable
@@ -146,30 +179,33 @@ internal fun ColumnScope.PurchaseInput(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(space = 2.dp),
     ) {
+        val compact = LocalCompactSheet.current
         AmountText(
             text = MoneyFormat.number(entry.value),
-            style = type.amountHero,
+            style = if (compact) type.amountInput else type.amountHero,
             color = if (entry.isEmpty) colors.muted else colors.ink,
             textAlign = TextAlign.Center,
         )
         val minText = stringResource(R.string.buy_in_hint_min, MoneyFormat.number(minBuyIn))
         val hint = stringResource(R.string.buy_in_hint, minText)
-        Text(
-            text =
-                buildAnnotatedString {
-                    val start = hint.indexOf(minText)
-                    if (belowMin && start >= 0) {
-                        append(hint.substring(0, start))
-                        withStyle(SpanStyle(color = colors.owe)) { append(minText) }
-                        append(hint.substring(start + minText.length))
-                    } else {
-                        append(hint)
-                    }
-                },
-            style = type.caption,
-            color = colors.muted,
-            textAlign = TextAlign.Center,
-        )
+        if (!compact || belowMin) {
+            Text(
+                text =
+                    buildAnnotatedString {
+                        val start = hint.indexOf(minText)
+                        if (belowMin && start >= 0) {
+                            append(hint.substring(0, start))
+                            withStyle(SpanStyle(color = colors.owe)) { append(minText) }
+                            append(hint.substring(start + minText.length))
+                        } else {
+                            append(hint)
+                        }
+                    },
+                style = type.caption,
+                color = colors.muted,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
     quote.warnings.filterIsInstance<DomainWarning.SuspiciousBuyIn>().firstOrNull()?.let { warning ->
         InfoBanner(
@@ -249,6 +285,27 @@ internal fun PaymentSelector(split: Boolean, payment: BuyInPayment, onAction: (T
 /** «Фишки 2 000 + рейк 200 + сбор 100 = 2 300 ₽» строками. */
 @Composable
 internal fun PurchaseBreakdown(quote: BuyInQuote, rakePercent: Long?, payment: BuyInPayment) {
+    val dash = stringResource(UiR.string.common_dash)
+    if (quote.chips <= 0) {
+        // Пока сумма не введена — без цифр (иначе «Итого в долг 100 ₽» за один сбор).
+        val label = if (payment.chipsPaid && payment.feesPaid) R.string.buy_in_total_due else R.string.buy_in_total_debt
+        BreakdownList(
+            rows =
+                listOf(
+                    BreakdownRow(stringResource(R.string.buy_in_row_chips), dash),
+                    BreakdownRow(
+                        rakePercent?.let {
+                            stringResource(R.string.buy_in_row_rake_percent, MoneyFormat.percent(it.toInt()))
+                        }
+                            ?: stringResource(R.string.buy_in_row_rake),
+                        dash,
+                    ),
+                    BreakdownRow(stringResource(R.string.buy_in_row_fee), dash),
+                ),
+            total = BreakdownRow(stringResource(label), dash),
+        )
+        return
+    }
     val fee = when {
         quote.feeAlreadyTaken -> stringResource(R.string.buy_in_row_fee_taken)
         quote.feeWaivedForBanker -> stringResource(R.string.buy_in_row_fee_waived)
@@ -270,6 +327,7 @@ internal fun PurchaseBreakdown(quote: BuyInQuote, rakePercent: Long?, payment: B
         }
     }
     val toDebt = quote.toDebt(payment)
+    // Подпись итога — по выбранному статусу: «В долг» → «Итого в долг», «Оплачено» → «Итого к оплате».
     val total = if (toDebt > 0) {
         BreakdownRow(
             stringResource(R.string.buy_in_total_debt),
@@ -294,8 +352,13 @@ internal fun IssueButton(quote: BuyInQuote, payment: BuyInPayment, enabled: Bool
     val paidNow = quote.paidNow(payment)
     val toDebt = quote.toDebt(payment)
     val subtitle = when {
+        // Пусто — без сумм (иначе «100 ₽ записать в долг» за один сбор).
+        chips <= 0 -> stringResource(R.string.buy_in_issue_sub_empty)
+
         paidNow == 0L -> stringResource(R.string.buy_in_issue_sub_debt, MoneyFormat.rub(quote.total))
+
         toDebt == 0L -> stringResource(R.string.buy_in_issue_sub_paid, MoneyFormat.rub(quote.total))
+
         else -> stringResource(R.string.buy_in_issue_sub_split, MoneyFormat.rub(paidNow), MoneyFormat.rub(toDebt))
     }
     IssueChipsButton(
@@ -311,8 +374,18 @@ internal fun IssueButton(quote: BuyInQuote, payment: BuyInPayment, enabled: Bool
 // ---------- Новый игрок (макет DebtWarning) ----------
 
 @Composable
-fun NewPlayerSheet(ui: NewPlayerUi, onAction: (TableAction) -> Unit) {
+fun NewPlayerSheet(ui: NewPlayerUi, onAction: (TableAction) -> Unit, snackbar: SnackbarHostState? = null) {
+    val debtPay = ui.debtPay
+    val oldDebt = ui.oldDebt
     FeltbookSheet(
+        snackbarHostState = snackbar,
+        bottomBar = {
+            if (debtPay != null && oldDebt != null) {
+                DebtPayActions(debt = oldDebt, entry = debtPay, busy = ui.busy, onAction = onAction)
+            } else {
+                NewPlayerActions(ui = ui, onAction = onAction)
+            }
+        },
         onDismiss = { onAction(TableAction.DismissSheet) },
         hasInput = ui.name.isNotBlank() || !ui.entry.isEmpty,
         discardBody = if (ui.entry.isEmpty) {
@@ -321,9 +394,9 @@ fun NewPlayerSheet(ui: NewPlayerUi, onAction: (TableAction) -> Unit) {
             discardAmountBody(MoneyFormat.number(ui.entry.value))
         },
     ) {
-        if (ui.debtPay != null && ui.debt != null) {
+        if (debtPay != null && oldDebt != null) {
             BackHandler { onAction(TableAction.DebtPayCancel) }
-            DebtPayContent(debt = ui.debt, entry = ui.debtPay, busy = ui.busy, onAction = onAction)
+            DebtPayContent(debt = oldDebt, entry = debtPay, onAction = onAction)
         } else {
             NewPlayerContent(ui = ui, onAction = onAction)
         }
@@ -400,17 +473,7 @@ fun ColumnScope.NewPlayerContent(ui: NewPlayerUi, onAction: (TableAction) -> Uni
             )
         }
     }
-    ui.debt?.let { debt ->
-        if (ui.debtCollapsed) {
-            Text(
-                text = stringResource(R.string.debt_warning_collapsed, MoneyFormat.rub(debt.total)),
-                style = type.small,
-                color = colors.owe,
-            )
-        } else {
-            DebtWarningCard(debt = debt, onAction = onAction)
-        }
-    }
+    OldDebtBlock(ui = ui, onAction = onAction)
     if (ui.amountFocused) {
         PurchaseInput(
             entry = ui.entry,
@@ -423,8 +486,7 @@ fun ColumnScope.NewPlayerContent(ui: NewPlayerUi, onAction: (TableAction) -> Uni
             payment = ui.payment,
             onAction = onAction,
         )
-        if (ui.debt != null) DebtDefaultHint()
-        IssueButton(quote = ui.quote, payment = ui.payment, enabled = ui.canConfirm, onAction = onAction)
+        if (ui.oldDebt != null) DebtDefaultHint()
     } else {
         Column(
             modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = focusAmount),
@@ -451,7 +513,16 @@ fun ColumnScope.NewPlayerContent(ui: NewPlayerUi, onAction: (TableAction) -> Uni
             }
         }
         PaymentSelector(split = ui.split, payment = ui.payment, onAction = onAction)
-        if (ui.debt != null) DebtDefaultHint()
+        if (ui.oldDebt != null) DebtDefaultHint()
+    }
+}
+
+/** Главная кнопка «Нового игрока» — закреплена внизу шторки. */
+@Composable
+fun ColumnScope.NewPlayerActions(ui: NewPlayerUi, onAction: (TableAction) -> Unit) {
+    if (ui.amountFocused) {
+        IssueButton(quote = ui.quote, payment = ui.payment, enabled = ui.canConfirm, onAction = onAction)
+    } else {
         val chips = ui.entry.value
         BrassButton(
             text =
@@ -548,12 +619,7 @@ internal fun DebtWarningCard(debt: DebtWarningUi, onAction: (TableAction) -> Uni
 
 /** «Погасить · Влад» поверх нового игрока: запись — в старую игру (m3-ui-spec §5.7). */
 @Composable
-internal fun ColumnScope.DebtPayContent(
-    debt: DebtWarningUi,
-    entry: AmountEntry,
-    busy: Boolean,
-    onAction: (TableAction) -> Unit,
-) {
+internal fun ColumnScope.DebtPayContent(debt: DebtWarningUi, entry: AmountEntry, onAction: (TableAction) -> Unit) {
     val since = formatShortDate(TimeFormat.localDate(debt.since, LocalTimeZone.current))
     PayInput(
         title = stringResource(R.string.debt_pay_title, debt.name),
@@ -570,6 +636,16 @@ internal fun ColumnScope.DebtPayContent(
         },
         onAction = onAction,
     )
+}
+
+/** «Принять N ₽» / «Отмена» погашения старого долга — закреплены внизу шторки. */
+@Composable
+internal fun ColumnScope.DebtPayActions(
+    debt: DebtWarningUi,
+    entry: AmountEntry,
+    busy: Boolean,
+    onAction: (TableAction) -> Unit,
+) {
     BrassButton(
         text = stringResource(R.string.pay_confirm, MoneyFormat.rub(entry.value)),
         onClick = { onAction(TableAction.DebtPayConfirm) },

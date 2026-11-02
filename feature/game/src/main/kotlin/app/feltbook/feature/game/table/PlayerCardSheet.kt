@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -74,8 +75,17 @@ import kotlin.time.Instant
 import kotlinx.coroutines.launch
 
 @Composable
-fun PlayerCardSheet(card: PlayerCardUi, now: Instant, onAction: (TableAction) -> Unit) {
-    FeltbookSheet(onDismiss = { onAction(TableAction.DismissSheet) }, contentSpacing = 16.dp) {
+fun PlayerCardSheet(
+    card: PlayerCardUi,
+    now: Instant,
+    onAction: (TableAction) -> Unit,
+    snackbar: SnackbarHostState? = null,
+) {
+    FeltbookSheet(
+        onDismiss = { onAction(TableAction.DismissSheet) },
+        contentSpacing = 16.dp,
+        snackbarHostState = snackbar,
+    ) {
         PlayerCardContent(card = card, now = now, onAction = onAction)
     }
 }
@@ -366,6 +376,12 @@ private fun JournalRow(row: JournalRowUi, now: Instant, onHold: () -> Unit) {
                 }.pointerInput(row.operationId) {
                     detectTapGestures(
                         onPress = {
+                            if (!row.reversible) {
+                                // Не отменяется: без заливки — вибрация отказа и причина.
+                                if (haptics) haptic.performHapticFeedback(HapticFeedbackType.Reject)
+                                hold()
+                                return@detectTapGestures
+                            }
                             val job = scope.launch {
                                 progress.animateTo(
                                     1f,

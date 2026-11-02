@@ -68,7 +68,12 @@ class TableViewModel @Inject constructor(
     private val eventChannel = Channel<TableEvent>(Channel.BUFFERED)
     val events: Flow<TableEvent> = eventChannel.receiveAsFlow()
 
-    private val inputs = MutableStateFlow(TableInputs())
+    private val inputs =
+        MutableStateFlow(TableInputsSaver.decode(savedStateHandle.get<String>(KEY_INPUTS)) ?: TableInputs())
+
+    init {
+        viewModelScope.launch { inputs.collect { savedStateHandle[KEY_INPUTS] = TableInputsSaver.encode(it) } }
+    }
 
     private val snapshot: StateFlow<GameSnapshot?> = gameRepository.observeGame(gameId)
         .onEach { onSnapshot(it) }
@@ -88,6 +93,9 @@ class TableViewModel @Inject constructor(
 
     private fun currentUi(): TableUiState =
         buildTableUiState(snapshot.value, clock.now(), inputs.value, games.value, directory.value)
+
+    /** Открыта ли шторка сейчас (куда показывать snackbar: в окне шторки или экрана). */
+    fun isSheetOpen(): Boolean = inputs.value.sheet != null
 
     /** Состояние «прямо сейчас» без подписки на [uiState] (тесты). */
     @VisibleForTesting
@@ -136,7 +144,7 @@ class TableViewModel @Inject constructor(
 
             is TableAction.PaymentChange -> updateAnySheet { sheet ->
                 when (sheet) {
-                    is SheetInput.BuyIn -> sheet.copy(payment = action.payment)
+                    is SheetInput.BuyIn -> sheet.copy(payment = action.payment, paymentTouched = true)
                     is SheetInput.NewPlayer -> sheet.copy(payment = action.payment, paymentTouched = true)
                     else -> sheet
                 }
@@ -165,13 +173,13 @@ class TableViewModel @Inject constructor(
             is TableAction.ReturnExisting -> openBuyIn(action.playerId)
 
             TableAction.DebtPayNow -> {
-                val total = (currentUi().sheet as? NewPlayerUi)?.debt?.total ?: return
-                updateSheet<SheetInput.NewPlayer> { it.copy(debtPay = AmountEntry.preset(total)) }
+                val total = (currentUi().sheet as? DebtAwareUi)?.oldDebt?.total ?: return
+                updateDebt { it.copy(debtPay = AmountEntry.preset(total)) }
             }
 
-            TableAction.DebtSeatWithDebt -> updateSheet<SheetInput.NewPlayer> { it.copy(debtCollapsed = true) }
+            TableAction.DebtSeatWithDebt -> updateDebt { it.copy(collapsed = true) }
 
-            TableAction.DebtPayCancel -> updateSheet<SheetInput.NewPlayer> { it.copy(debtPay = null) }
+            TableAction.DebtPayCancel -> updateDebt { it.copy(debtPay = null) }
 
             TableAction.DebtPayConfirm -> confirmDebtPay()
 
@@ -286,10 +294,11 @@ class TableViewModel @Inject constructor(
                 updateSheet<SheetInput.Pay> { it.copy(entry = AmountEntry.preset(amount)) }
             }
 
-            is NewPlayerUi -> {
-                val total = sheet.debt?.total ?: return
+            is DebtAwareUi -> {
+                val total = sheet.oldDebt?.total ?: return
+                if (sheet.debtPay == null) return
                 val amount = if (half) (total + 1) / 2 else total
-                updateSheet<SheetInput.NewPlayer> { it.copy(debtPay = AmountEntry.preset(amount)) }
+                updateDebt { it.copy(debtPay = AmountEntry.preset(amount)) }
             }
 
             else -> Unit
@@ -298,7 +307,7 @@ class TableViewModel @Inject constructor(
 
     private fun setEntry(entry: AmountEntry) = updateAnySheet { sheet ->
         when (sheet) {
-            is SheetInput.BuyIn -> sheet.copy(entry = entry)
+            is SheetInput.BuyIn -> if (sheet.debtPay != null) sheet.copy(debtPay = entry) else sheet.copy(entry = entry)
 
             is SheetInput.NewPlayer ->
                 if (sheet.debtPay !=
@@ -319,6 +328,10 @@ class TableViewModel @Inject constructor(
 
             else -> sheet
         }
+    }
+
+    private fun updateDebt(transform: (DebtFields) -> DebtFields) = updateAnySheet { sheet ->
+        sheet.debtFields()?.let { sheet.withDebtFields(transform(it)) } ?: sheet
     }
 
     private fun updateAnySheet(transform: (SheetInput) -> SheetInput?) = inputs.update { s ->
@@ -379,7 +392,7 @@ class TableViewModel @Inject constructor(
         val ui = currentUi().sheet as? BuyInUi ?: return
         if (!ui.canConfirm) return
         val chips = input.entry.value
-        val payment = input.payment.normalized(ui.split)
+        val payment = ui.payment.normalized(ui.split)
         commitThen({ listOf(Commands.buyIn(it, input.playerId, chips, payment, stamp())) }) { changes ->
             closeSheet()
             eventChannel.send(TableEvent.ConfirmHaptic)
@@ -417,12 +430,21 @@ class TableViewModel @Inject constructor(
         }
     }
 
+    @Suppress("CyclomaticComplexMethod", "LongMethod") // Погашение по нескольким старым играм одной транзакцией.
     private fun confirmDebtPay() {
-        val input = inputs.value.sheet as? SheetInput.NewPlayer ?: return
-        val amount = input.debtPay?.value ?: return
+        val sheet = inputs.value.sheet ?: return
+        val amount = sheet.debtFields()?.debtPay?.value ?: return
         val current = snapshot.value ?: return
         if (amount <= 0 || inputs.value.busy) return
-        val name = PlayerNames.normalize(input.name)
+        // Статус оплаты, который банкир видел до погашения (по долгу — «Оплачено сейчас»), не должен «прыгнуть».
+        val shownPayment = (currentUi().sheet as? DebtAwareUi)?.payment ?: return
+        val name = PlayerNames.normalize(
+            when (sheet) {
+                is SheetInput.NewPlayer -> sheet.name
+                is SheetInput.BuyIn -> current.player(sheet.playerId)?.name.orEmpty()
+                else -> return
+            },
+        )
         val debts = Debts.forName(name, games.value, directory.value, excludeGameId = gameId).sortedBy { it.since }
         if (amount > debts.sumOf { it.amount }) return
         inputs.update { it.copy(busy = true) }
@@ -444,7 +466,7 @@ class TableViewModel @Inject constructor(
             }
             inputs.update { it.copy(busy = false) }
             if (outcome == CommitOutcome.Ok) {
-                updateSheet<SheetInput.NewPlayer> { it.copy(debtPay = null) }
+                updateDebt { it.copy(debtPay = null, payment = shownPayment, touched = true) }
                 eventChannel.send(TableEvent.ConfirmHaptic)
                 eventChannel.send(
                     TableEvent.Undoable(
@@ -614,18 +636,34 @@ class TableViewModel @Inject constructor(
                 listOf(Commands.renamePlayer(it, token.playerId.toPlayerId(), token.name))
             }) {}
 
-            is UndoToken.Reverse -> viewModelScope.launch {
-                val ids = token.operations.map { it.first.toGameId() }.distinct()
-                val snaps = ids.mapNotNull { id -> gameRepository.getGame(id)?.let { id to it } }.toMap().toMutableMap()
-                val outcome = gameRepository.tryCommit {
-                    val stamp = stamp()
-                    token.operations.mapNotNull { (game, op) ->
-                        val id = game.toGameId()
-                        val snap = snaps[id] ?: return@mapNotNull null
-                        Commands.reverse(snap, op.toOperationId(), null, stamp).also { snaps[id] = snap.apply(it) }
+            is UndoToken.Reverse -> {
+                if (inputs.value.busy) return
+                inputs.update { it.copy(busy = true) }
+                viewModelScope.launch {
+                    // Каждая попытка — по свежим снимкам; STALE_SEQ (кто-то записал между) — ещё одна попытка.
+                    var outcome = reverseOperations(token)
+                    if (outcome == CommitOutcome.Stale) outcome = reverseOperations(token)
+                    inputs.update { it.copy(busy = false) }
+                    val message = when (outcome) {
+                        CommitOutcome.Ok -> null
+                        CommitOutcome.Stale -> uiText(R.string.error_stale)
+                        else -> outcome.messageOrNull()
                     }
+                    message?.let { eventChannel.send(TableEvent.Message(it)) }
                 }
-                outcome.messageOrNull()?.let { eventChannel.send(TableEvent.Message(it)) }
+            }
+        }
+    }
+
+    private suspend fun reverseOperations(token: UndoToken.Reverse): CommitOutcome {
+        val ids = token.operations.map { it.first.toGameId() }.distinct()
+        val snaps = ids.mapNotNull { id -> gameRepository.getGame(id)?.let { id to it } }.toMap().toMutableMap()
+        return gameRepository.tryCommit {
+            val stamp = stamp()
+            token.operations.mapNotNull { (game, op) ->
+                val id = game.toGameId()
+                val snap = snaps[id] ?: return@mapNotNull null
+                Commands.reverse(snap, op.toOperationId(), null, stamp).also { snaps[id] = snap.apply(it) }
             }
         }
     }
@@ -635,6 +673,7 @@ class TableViewModel @Inject constructor(
         const val ARG_GAME_ID = "gameId"
         const val ARG_CASH_OUT = "cashOutPlayerId"
         private const val KEY_CASH_OUT_HANDLED = "cashOutHandled"
+        private const val KEY_INPUTS = "tableInputs"
         private const val STOP_TIMEOUT_MILLIS = 5_000L
         private const val MAX_NAME_INPUT = 60
         private const val MAX_REASON = 200

@@ -83,6 +83,15 @@ data class BreakdownLine(val label: UiText, val amount: Long, val tone: Tone = T
 
 sealed interface SheetUi
 
+/** Шторка, где может всплыть старый долг игрока из прошлых игр. */
+interface DebtAwareUi {
+    val oldDebt: DebtWarningUi?
+    val debtCollapsed: Boolean
+    val debtPay: AmountEntry?
+    val payment: BuyInPayment
+    val busy: Boolean
+}
+
 @Immutable
 data class BreakdownUi(
     val kind: BreakdownKind,
@@ -150,11 +159,15 @@ data class BuyInUi(
     val minBuyIn: Long,
     val rakePercent: Long?,
     val split: Boolean,
-    val payment: BuyInPayment,
+    override val payment: BuyInPayment,
     val quote: BuyInQuote,
     val lastAmount: Long?,
-    val busy: Boolean,
-) : SheetUi {
+    override val busy: Boolean,
+    override val oldDebt: DebtWarningUi? = null,
+    override val debtCollapsed: Boolean = false,
+    override val debtPay: AmountEntry? = null,
+) : SheetUi,
+    DebtAwareUi {
     val belowMin: Boolean get() = entry.value in 1 until minBuyIn
     val canConfirm: Boolean get() = quote.canConfirm && !busy
 }
@@ -183,19 +196,20 @@ data class NewPlayerUi(
     val name: String,
     val suggestions: List<String>,
     val nameProblem: NameProblem?,
-    val debt: DebtWarningUi?,
-    val debtCollapsed: Boolean,
+    override val oldDebt: DebtWarningUi?,
+    override val debtCollapsed: Boolean,
     val amountFocused: Boolean,
     val entry: AmountEntry,
     val minBuyIn: Long,
     val rakePercent: Long?,
     val split: Boolean,
-    val payment: BuyInPayment,
+    override val payment: BuyInPayment,
     val quote: BuyInQuote,
     /** «Погасить сейчас»: ввод суммы погашения старого долга (null — не открыт). */
-    val debtPay: AmountEntry?,
-    val busy: Boolean,
-) : SheetUi {
+    override val debtPay: AmountEntry?,
+    override val busy: Boolean,
+) : SheetUi,
+    DebtAwareUi {
     val belowMin: Boolean get() = entry.value in 1 until minBuyIn
     val canConfirm: Boolean get() = quote.canConfirm && !busy
 }

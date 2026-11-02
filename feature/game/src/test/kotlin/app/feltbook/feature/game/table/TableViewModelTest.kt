@@ -6,12 +6,14 @@ import app.cash.turbine.test
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.GameStates
+import app.feltbook.core.domain.engine.SettlementChoice
 import app.feltbook.core.domain.engine.Stamp
 import app.feltbook.core.domain.model.EntryType
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.PlayerName
 import app.feltbook.core.domain.model.PlayerStatus
+import app.feltbook.core.domain.model.apply
 import app.feltbook.core.domain.repository.commit
 import app.feltbook.core.ui.component.AmountEntry
 import app.feltbook.feature.game.common.key
@@ -42,6 +44,7 @@ class TableViewModelTest {
     private lateinit var repository: FakeGameRepository
     private lateinit var viewModel: TableViewModel
     private lateinit var gameKey: String
+    private lateinit var savedState: SavedStateHandle
 
     private fun open(
         snapshot: GameSnapshot = PreviewTableData.running(),
@@ -55,7 +58,8 @@ class TableViewModelTest {
             if (cashOut != null) put(TableViewModel.ARG_CASH_OUT, cashOut)
         }
         val names = FakePlayerNameRepository(listOf(PlayerName("Влад", PreviewTableData.start - 30.hours)))
-        viewModel = TableViewModel(SavedStateHandle(args), repository, names, clock)
+        savedState = SavedStateHandle(args)
+        viewModel = TableViewModel(savedState, repository, names, clock)
     }
 
     private val snapshot: GameSnapshot get() = repository.snapshot(gameKey.toGameId())
@@ -142,8 +146,8 @@ class TableViewModelTest {
         viewModel.onAction(TableAction.NameChange("Влад"))
         viewModel.onAction(TableAction.EntryChange(AmountEntry(1_000)))
         val ui = viewModel.currentUiState().sheet as NewPlayerUi
-        assertNotNull(ui.debt)
-        assertEquals(1_053L, ui.debt!!.total)
+        assertNotNull(ui.oldDebt)
+        assertEquals(1_053L, ui.oldDebt!!.total)
         assertEquals(BuyInPayment.PAID, ui.payment)
         viewModel.onAction(TableAction.ConfirmBuyIn)
         val vlad = GameStates.compute(snapshot).player(snapshot.id("Влад"))!!
@@ -172,6 +176,104 @@ class TableViewModelTest {
         assertEquals(2_500L, state.withdrawal)
         assertEquals(200L, state.paidOut)
         assertEquals(50L, state.tipsToBanker)
+    }
+
+    @Test
+    fun cashOutUndoReversesSettlementAndExit() = runTest {
+        open()
+        val vlad = playerKey("Влад")
+        viewModel.events.test {
+            viewModel.onAction(TableAction.SwipeCashOut(vlad))
+            viewModel.onAction(TableAction.EntryChange(AmountEntry(1_247)))
+            viewModel.onAction(TableAction.SettleFull)
+            val undo = awaitItem() as TableEvent.Undoable
+            assertEquals(PlayerStatus.CASHED_OUT, GameStates.compute(snapshot).player(snapshot.id("Влад"))!!.status)
+            viewModel.onAction(TableAction.Undo(undo.token))
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+        val vladState = GameStates.compute(snapshot).player(snapshot.id("Влад"))!!
+        assertEquals(PlayerStatus.PLAYING, vladState.status)
+        assertEquals(-2_300L, vladState.outstanding)
+        assertEquals(0L, vladState.paid)
+        assertEquals(1_247L, GameStates.compute(snapshot).table.chipsInPlay)
+    }
+
+    @Test
+    fun payOldDebtFromNewPlayerSheetAndUndo() = runTest {
+        val old = PreviewTableData.oldGameWithDebt()
+        open(PreviewTableData.started(), extra = listOf(old))
+        viewModel.onAction(TableAction.AddPlayer)
+        viewModel.onAction(TableAction.NameChange("Влад"))
+        viewModel.events.test {
+            viewModel.onAction(TableAction.DebtPayNow)
+            viewModel.onAction(TableAction.DebtPayConfirm)
+            assertEquals(TableEvent.ConfirmHaptic, awaitItem())
+            val undo = awaitItem() as TableEvent.Undoable
+            val paidOld = repository.snapshot(old.game.id)
+            assertEquals(EntryType.PAYMENT, paidOld.entries.last().type)
+            assertEquals(0L, GameStates.compute(paidOld).player(paidOld.id("Влад"))!!.debt)
+            // Показанный статус «Оплачено сейчас» не «прыгает» после погашения.
+            assertEquals(BuyInPayment.PAID, (viewModel.currentUiState().sheet as NewPlayerUi).payment)
+
+            viewModel.onAction(TableAction.Undo(undo.token))
+            cancelAndIgnoreRemainingEvents()
+        }
+        val restored = repository.snapshot(old.game.id)
+        assertEquals(1_053L, GameStates.compute(restored).player(restored.id("Влад"))!!.debt)
+    }
+
+    @Test
+    fun newPlayerDefaultsToDebtUntilNameHasOldDebt() {
+        open(PreviewTableData.started(), extra = listOf(PreviewTableData.oldGameWithDebt()))
+        viewModel.onAction(TableAction.AddPlayer)
+        assertEquals(BuyInPayment.DEBT, (viewModel.currentUiState().sheet as NewPlayerUi).payment)
+        viewModel.onAction(TableAction.NameChange("Егор"))
+        assertEquals(BuyInPayment.DEBT, (viewModel.currentUiState().sheet as NewPlayerUi).payment)
+    }
+
+    @Test
+    fun returningPlayerSeesOldDebtFromPreviousGames() {
+        val old = PreviewTableData.oldGameWithDebt()
+        var table = PreviewTableData.started()
+        table = table.apply(Commands.addPlayer(table, "Влад", 1_000, BuyInPayment.PAID, Stamp(clock.now())))
+        table = table.apply(
+            Commands.cashOut(table, table.id("Влад"), 1_000, null, SettlementChoice.Full, true, Stamp(clock.now())),
+        )
+        open(table, extra = listOf(old))
+        viewModel.onAction(TableAction.AddPlayer)
+        viewModel.onAction(TableAction.NameChange("Влад"))
+        val taken = (viewModel.currentUiState().sheet as NewPlayerUi).nameProblem as NameProblem.Taken
+        viewModel.onAction(TableAction.ReturnExisting(taken.playerId))
+        val buyIn = viewModel.currentUiState().sheet as BuyInUi
+        assertTrue(buyIn.isReturn)
+        assertEquals(1_053L, buyIn.oldDebt!!.total)
+        assertEquals(BuyInPayment.PAID, buyIn.payment)
+    }
+
+    @Test
+    fun undoWhileBusyIsIgnored() {
+        open()
+        // Пустой токен ничего не отменяет, но busy снимается — повторный вызов не зависает.
+        viewModel.onAction(TableAction.Undo(UndoToken.Reverse(emptyList())))
+        assertFalse(viewModel.currentUiState().busy)
+    }
+
+    @Test
+    fun inputsSurviveProcessDeath() {
+        open()
+        viewModel.onAction(TableAction.SwipeCashOut(playerKey("Влад")))
+        viewModel.onAction(TableAction.EntryChange(AmountEntry(1_247)))
+        val saved = savedState.get<String>("tableInputs")
+        val restored = TableViewModel(
+            SavedStateHandle(mapOf(TableViewModel.ARG_GAME_ID to gameKey, "tableInputs" to saved)),
+            repository,
+            FakePlayerNameRepository(),
+            clock,
+        )
+        val sheet = restored.currentUiState().sheet as CashOutUi
+        assertEquals(1_247L, sheet.chips.value)
+        restored.viewModelScope.cancel()
     }
 
     @Test
