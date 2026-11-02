@@ -8,11 +8,17 @@ plugins {
 
 android {
     namespace = "app.feltbook.core.data"
+
+    // Экспортированные схемы Room — ассеты unit-тестов: MigrationTestHelper читает их под Robolectric.
+    sourceSets.getByName("test").assets.directories.add("$projectDir/schemas")
 }
 
-feltbookTests {
-    // Тестов пока нет, а Hilt/KSP генерируют test-исходники. TODO(M3): убрать, когда появятся тесты.
-    allowNoDiscoveredTests = true
+kotlin {
+    compilerOptions {
+        // Uuid и kotlin.time.Instant/Clock доменной модели (как в :core:domain).
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
 }
 
 dependencies {
@@ -23,6 +29,7 @@ dependencies {
 
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
 }
