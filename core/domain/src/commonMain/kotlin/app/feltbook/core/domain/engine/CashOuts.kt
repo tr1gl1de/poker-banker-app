@@ -17,7 +17,7 @@ data class Tip(val amount: Long, val to: TipTarget)
 
 /**
  * Итог выхода до подтверждения (ТЗ §3.3, макеты CashOut, DebtCashOut).
- * @property tipAsChips получатель за столом → запишется `TIP_CHIPS`, иначе `TIP`.
+ * @property tipAsChips получатель за столом и уже покупал фишки → запишется `TIP_CHIPS`; вышедший → `TIP`.
  * @property withdrawal W этого выхода = F − T.
  * @property outstandingBefore `outstanding` игрока до выхода («Долг игрока −3 400 ₽»).
  * @property balance `outstandingBefore + withdrawal`: > 0 «Банкир выплачивает N ₽», < 0 «Игрок доплачивает N ₽», 0 —
@@ -69,7 +69,7 @@ object CashOuts {
         val recipient = (tip?.to as? TipTarget.ToPlayer)?.let { game.player(it.playerId)?.takeUnless { r -> r.isVoid } }
         val tipAmount = tip?.amount ?: 0L
         val blockers = blockers(snapshot, playerId, state, chips) +
-            (tip?.let { tipBlockers(it, playerId, chips, recipient != null) } ?: emptyList())
+            (tip?.let { tipBlockers(it, playerId, chips, recipient) } ?: emptyList())
         val session = state?.session
         val outstandingBefore = state?.outstanding ?: 0L
         val withdrawal = chips - tipAmount
@@ -78,7 +78,7 @@ object CashOuts {
             playerId = playerId,
             chips = chips,
             tip = tip,
-            tipAsChips = recipient?.status == PlayerStatus.PLAYING,
+            tipAsChips = recipient?.isSeated == true,
             withdrawal = withdrawal,
             sessionCharged = session?.charged ?: 0L,
             sessionPaid = session?.paid ?: 0L,
@@ -125,7 +125,7 @@ object CashOuts {
         }
     }
 
-    private fun tipBlockers(tip: Tip, giver: PlayerId, chips: Long, recipientValid: Boolean): List<DomainError> =
+    private fun tipBlockers(tip: Tip, giver: PlayerId, chips: Long, recipient: PlayerState?): List<DomainError> =
         buildList {
             when {
                 tip.amount <= 0 -> add(DomainError.TipNotPositive)
@@ -135,7 +135,11 @@ object CashOuts {
             if (to is TipTarget.ToPlayer) {
                 when {
                     to.playerId == giver -> add(DomainError.TipToSelf)
-                    !recipientValid -> add(DomainError.TipRecipientInvalid(to.playerId))
+
+                    recipient == null -> add(DomainError.TipRecipientInvalid(to.playerId))
+
+                    recipient.status == PlayerStatus.PLAYING && !recipient.isSeated ->
+                        add(DomainError.TipRecipientNotSeated(to.playerId))
                 }
             }
         }

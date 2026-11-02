@@ -35,6 +35,11 @@ sealed interface DomainError {
     data class TipExceedsChips(val chips: Long) : DomainError
     data object TipToSelf : DomainError
     data class TipRecipientInvalid(val playerId: PlayerId) : DomainError
+
+    /**
+     * Получатель чаевых «за столом», но ещё не покупал фишки — фишками ему дарить нечего (только банкиру или вышедшим).
+     */
+    data class TipRecipientNotSeated(val playerId: PlayerId) : DomainError
     data class EarlyExitNotConfirmed(val minutesPlayed: Long, val minPlayMinutes: Int) : DomainError
     data class OperationNotFound(val operationId: OperationId) : DomainError
     data class OperationNotReversible(val reason: NotReversibleReason) : DomainError
@@ -49,7 +54,19 @@ sealed interface DomainError {
     data class ImportConflict(val reason: ImportConflictReason) : DomainError
 }
 
-enum class NotReversibleReason { ALREADY_REVERSED, IS_REVERSAL, INCOME_TAKEN, GAME_READ_ONLY, NOT_ALLOWED_AFTER_CLOSE }
+enum class NotReversibleReason {
+    ALREADY_REVERSED,
+    IS_REVERSAL,
+    INCOME_TAKEN,
+    GAME_READ_ONLY,
+    NOT_ALLOWED_AFTER_CLOSE,
+
+    /** Первая покупка игрока, а после неё есть действующие докупы — «Сначала отмените более поздние докупы». */
+    LATER_PURCHASES_EXIST,
+
+    /** Выход с чаевыми фишками, а получатель с тех пор вышел — «Сначала отмените выход получателя чаевых». */
+    TIP_RECIPIENT_CASHED_OUT,
+}
 
 /** Предупреждения не блокируют, показываются в шторке до подтверждения (ТЗ §5.1 «Подозрительная сумма»). */
 sealed interface DomainWarning {

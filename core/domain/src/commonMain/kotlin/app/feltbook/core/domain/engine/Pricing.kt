@@ -105,6 +105,8 @@ object Pricing {
      * Котировка первого закупа нового игрока. Дополнительно блокеры имени: пустое, длиннее `PlayerNames.MAX_LENGTH`,
      * уже есть за этим столом (`NameTaken`, сравнение после `PlayerNames.normalize`). Совпадение с void-игроком
      * не блокер: котировка относится к нему (`playerId` = его id), `Commands.addPlayer` его «возвращает».
+     * Сбора нет, если игрок — банкир: void-банкир возвращается банкиром, а имя, совпадающее с банкиром игры, который
+     * «не играет» (`bankerPlayerId == null`), садит банкира за стол — `Commands.addPlayer` ставит `bankerPlayerId`.
      */
     fun quoteNewPlayer(snapshot: GameSnapshot, name: String, chips: Long): BuyInQuote {
         val state = GameStates.compute(snapshot)
@@ -122,7 +124,7 @@ object Pricing {
             chips = chips,
             isFirstBuyIn = true,
             isReturn = false,
-            isBanker = false,
+            isBanker = same?.isBanker == true || bindsBanker(snapshot, normalized),
             blockers = blockers,
         )
     }
@@ -158,7 +160,7 @@ object Pricing {
 
     private fun suspicion(chips: Long, typical: Long?): List<DomainWarning> {
         val suspicious =
-            chips > Suspicion.ABSOLUTE_LIMIT || (typical != null && chips > typical * Suspicion.AVERAGE_MULTIPLIER)
+            chips >= Suspicion.ABSOLUTE_LIMIT || (typical != null && chips > typical * Suspicion.AVERAGE_MULTIPLIER)
         return if (suspicious) listOf(DomainWarning.SuspiciousBuyIn(chips, typical)) else emptyList()
     }
 
@@ -180,6 +182,10 @@ object Pricing {
         else -> emptyList()
     }
 }
+
+/** Новый игрок с именем банкира, который «не играет», становится банкиром-игроком (`Game.bankerPlayerId`). */
+internal fun bindsBanker(snapshot: GameSnapshot, normalized: String): Boolean =
+    snapshot.game.bankerPlayerId == null && normalized == PlayerNames.normalize(snapshot.game.currentBankerName)
 
 /** Блокеры уже нормализованного имени: пустое или длиннее [PlayerNames.MAX_LENGTH]. */
 internal fun nameBlockers(normalized: String): List<DomainError> = when {

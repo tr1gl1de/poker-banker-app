@@ -267,7 +267,7 @@ class ImportsTest {
         )
         val longerLocal = incoming.copy(handovers = listOf(prepareHandover()))
         assertEquals(
-            ImportPlan.Conflict(ImportConflictReason.DIVERGED_LEDGER),
+            ImportPlan.Conflict(ImportConflictReason.LOCAL_NEWER),
             Imports.plan(incoming, longerLocal, null),
         )
         assertEquals(

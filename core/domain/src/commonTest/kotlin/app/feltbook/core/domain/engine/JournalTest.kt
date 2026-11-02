@@ -37,7 +37,7 @@ class JournalTest {
         assertEquals(3, first.entries.size)
         assertEquals(table.id("Андрей"), first.playerId)
         assertEquals("Олег", first.bankerName)
-        assertTrue(first.reversible)
+        assertFalse(first.reversible, "первый закуп Андрея при действующем докупе не отменяется")
         assertNull(first.reversal)
         assertEquals(first.entries.first().createdAt, first.at)
     }

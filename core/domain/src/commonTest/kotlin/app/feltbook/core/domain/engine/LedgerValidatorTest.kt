@@ -88,7 +88,11 @@ class LedgerValidatorTest {
             codes(withEntry(next(EntryType.TIP, a, 1, playerId(99)))),
         )
         assertTrue(codes(withEntry(next(EntryType.TIP, a, 1, b))).isEmpty())
-        assertTrue(codes(withEntry(next(EntryType.INCOME_TAKEN, null, 1))).isEmpty())
+        assertEquals(
+            listOf(LedgerProblemCode.HANDOVER_INCOME_MISMATCH),
+            codes(withEntry(next(EntryType.INCOME_TAKEN, null, 1))),
+            "INCOME_TAKEN без акта",
+        )
     }
 
     @Test

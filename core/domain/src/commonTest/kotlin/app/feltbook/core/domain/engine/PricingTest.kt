@@ -224,11 +224,11 @@ class PricingTest {
     // Подозрительные суммы.
 
     @Test
-    fun `без покупок подозрителен только порог 20 000`() {
-        assertTrue(Pricing.quoteNewPlayer(emptySnapshot(), "А", 20_000).warnings.isEmpty())
+    fun `без покупок подозрителен только порог 20 000 — 19 999 нет, 20 000 да`() {
+        assertTrue(Pricing.quoteNewPlayer(emptySnapshot(), "А", 19_999).warnings.isEmpty())
         assertEquals(
-            listOf<DomainWarning>(DomainWarning.SuspiciousBuyIn(20_001, null)),
-            Pricing.quoteNewPlayer(emptySnapshot(), "А", 20_001).warnings,
+            listOf<DomainWarning>(DomainWarning.SuspiciousBuyIn(20_000, null)),
+            Pricing.quoteNewPlayer(emptySnapshot(), "А", 20_000).warnings,
         )
         assertNull(Pricing.typicalPurchase(emptySnapshot()))
     }

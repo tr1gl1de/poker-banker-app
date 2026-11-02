@@ -65,6 +65,8 @@ object Commands {
     /**
      * Новый игрок + первый закуп одной операцией: Player + BUY_IN, RAKE?, BANKER_FEE?, PAYMENT?.
      * Если имя совпадает с void-игроком этого стола — возвращает его (без нового Player), а не создаёт дубль.
+     * Если имя — банкира игры, который «не играет», игрок становится банкиром-игроком (`game.bankerPlayerId`, без
+     *   сбора).
      */
     fun addPlayer(snapshot: GameSnapshot, name: String, chips: Long, payment: BuyInPayment, stamp: Stamp): GameChange {
         val quote = Pricing.quoteNewPlayer(snapshot, name, chips)
@@ -75,8 +77,10 @@ object Commands {
             null
         }
         val playerId = player?.id ?: quote.playerId!!
+        val seatsBanker = bindsBanker(snapshot, PlayerNames.normalize(name))
         return GameChange(
             gameId = snapshot.game.id,
+            game = if (seatsBanker) snapshot.game.copy(bankerPlayerId = playerId) else null,
             players = listOfNotNull(player),
             entries = purchase(snapshot, playerId, quote, payment, stamp),
         )
@@ -353,6 +357,7 @@ internal fun reversalBlocker(snapshot: GameSnapshot, operationId: OperationId): 
     val operation = snapshot.entries.filter { it.operationId == operationId }
     if (operation.isEmpty()) return DomainError.OperationNotFound(operationId)
     val reversed = Ledger.reversedIds(snapshot.entries)
+    val effective = Ledger.effective(snapshot.entries)
     val status = snapshot.game.status
     val reason = when {
         status == GameStatus.HANDED_OVER -> NotReversibleReason.GAME_READ_ONLY
@@ -366,10 +371,33 @@ internal fun reversalBlocker(snapshot: GameSnapshot, operationId: OperationId): 
         status == GameStatus.CLOSED && operation.any { it.type !in reversibleAfterClose } ->
             NotReversibleReason.NOT_ALLOWED_AFTER_CLOSE
 
+        firstPurchaseWithLaterOnes(operation, effective) -> NotReversibleReason.LATER_PURCHASES_EXIST
+
+        chipTipRecipientLeft(operation, effective) -> NotReversibleReason.TIP_RECIPIENT_CASHED_OUT
+
         else -> null
     }
     return reason?.let { DomainError.OperationNotReversible(it) }
 }
+
+/**
+ * Отмена первой покупки при действующих докупах сделала бы следующий докуп «первым» без сбора в разовом режиме
+ * (банкир теряет сбор) — сначала отменяют поздние докупы.
+ */
+private fun firstPurchaseWithLaterOnes(operation: List<LedgerEntry>, effective: List<LedgerEntry>): Boolean {
+    val buyIn = operation.firstOrNull { it.type == EntryType.BUY_IN } ?: return false
+    val purchases = effective.filter { it.type == EntryType.BUY_IN && it.playerId == buyIn.playerId }
+    return purchases.firstOrNull()?.id == buyIn.id && purchases.size > 1
+}
+
+/**
+ * После отмены такого выхода чаевые фишками нельзя «вернуть»: получатель уже сдал их в своём выходе,
+ * а повторный выход дарителя записал бы их рублями — двойная выплата.
+ */
+private fun chipTipRecipientLeft(operation: List<LedgerEntry>, effective: List<LedgerEntry>): Boolean =
+    operation.filter { it.type == EntryType.TIP_CHIPS }.any { tip ->
+        effective.any { it.type == EntryType.CASH_OUT && it.playerId == tip.counterpartyPlayerId && it.seq > tip.seq }
+    }
 
 private val reversibleAfterClose = setOf(EntryType.PAYMENT, EntryType.PAYOUT, EntryType.DEBT_FORGIVEN)
 

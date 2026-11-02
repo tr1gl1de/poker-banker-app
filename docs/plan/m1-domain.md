@@ -521,6 +521,8 @@ sealed interface DomainError {
     data class TipExceedsChips(val chips: Long) : DomainError
     data object TipToSelf : DomainError
     data class TipRecipientInvalid(val playerId: PlayerId) : DomainError
+    /** Получатель «за столом», но ещё не покупал (банкир-игрок без закупа) — фишками дарить нельзя. */
+    data class TipRecipientNotSeated(val playerId: PlayerId) : DomainError
     data class EarlyExitNotConfirmed(val minutesPlayed: Long, val minPlayMinutes: Int) : DomainError
     data class OperationNotFound(val operationId: OperationId) : DomainError
     data class OperationNotReversible(val reason: NotReversibleReason) : DomainError
@@ -534,7 +536,13 @@ sealed interface DomainError {
     data class ImportConflict(val reason: ImportConflictReason) : DomainError
 }
 
-enum class NotReversibleReason { ALREADY_REVERSED, IS_REVERSAL, INCOME_TAKEN, GAME_READ_ONLY, NOT_ALLOWED_AFTER_CLOSE }
+enum class NotReversibleReason {
+    ALREADY_REVERSED, IS_REVERSAL, INCOME_TAKEN, GAME_READ_ONLY, NOT_ALLOWED_AFTER_CLOSE,
+    /** Первая покупка игрока при действующих докупах — «Сначала отмените более поздние докупы». */
+    LATER_PURCHASES_EXIST,
+    /** Выход с TIP_CHIPS, а получатель с тех пор вышел — «Сначала отмените выход получателя чаевых». */
+    TIP_RECIPIENT_CASHED_OUT,
+}
 
 /** Предупреждения не блокируют, показываются в шторке до подтверждения (ТЗ §5.1 «Подозрительная сумма»). */
 sealed interface DomainWarning {
@@ -546,7 +554,7 @@ sealed interface DomainWarning {
 
 class DomainRuleViolation(val error: DomainError) : IllegalStateException(error.toString())
 
-/** Пороги ТЗ §5.1. Покупка подозрительна, если `chips > 5 × средняя` или `chips > 20 000`. */
+/** Пороги ТЗ §5.1. Покупка подозрительна, если `chips > 5 × средняя` или `chips ≥ 20 000` («20 000 фишек — точно?»). */
 object Suspicion {
     const val AVERAGE_MULTIPLIER: Long = 5
     const val ABSOLUTE_LIMIT: Long = 20_000
@@ -1263,7 +1271,11 @@ sealed interface ImportPlan {
      * может открыть свой же файл, если получатель его не принял (QUESTIONS №13).
      */
     data class Extend(val change: GameChange) : ImportPlan
-    /** Журнал, акты, строка игры и игроки совпадают — пропустить. */
+    /**
+     * Журнал, акты, строка игры и игроки совпадают — пропустить. Без новых записей/актов Extend бывает только при
+     * возврате своей переданной игры (локальная HANDED_OVER → входящая активная); иначе `Conflict(LOCAL_NEWER)` —
+     * закрытая игра не переоткрывается и имена не откатываются молча.
+     */
     data object Identical : ImportPlan
     data class Conflict(val reason: ImportConflictReason) : ImportPlan
 }
@@ -1275,6 +1287,8 @@ enum class ImportConflictReason {
     SECOND_ACTIVE_GAME,
     /** Входящий журнал не прошёл [LedgerValidator]. */
     INVALID_LEDGER,
+    /** Входящий журнал — префикс локального (или равен, а строки игры/игроков отличаются): локальная копия новее, пропустить. */
+    LOCAL_NEWER,
 }
 
 object Imports {
@@ -1309,6 +1323,14 @@ enum class LedgerProblemCode {
     NOTE_NOT_ALLOWED,
     BANKER_PLAYER_UNKNOWN,
     INVALID_RULES,
+    DUPLICATE_PLAYER_ID,
+    /** TIP/TIP_CHIPS, где получатель = даритель. */
+    TIP_TO_SELF,
+    /** `Handover.incomeTaken` ≠ записи INCOME_TAKEN на `ledgerSeq` (если > 0) или Σ INCOME_TAKEN ≠ Σ incomeTaken. */
+    HANDOVER_INCOME_MISMATCH,
+    /** `Handover.ledgerSeq` вне `0..последний seq`. */
+    HANDOVER_SEQ_OUT_OF_RANGE,
+    INCOME_TAKEN_REVERSED,
 }
 
 object LedgerValidator {
@@ -1652,4 +1674,16 @@ object Sha256 {
 | `SessionFigures.carriedOver` | `outstanding` по записям до начала сессии | `outstanding − (paid − charged)` сессии | выплата старого долга банкира после возврата иначе не попадала ни в сессию, ни в перенос, и строки выхода не сходились с балансом |
 | Зависимости модуля | `kotlinx-datetime`, `serialization-core` | `kotlinx-serialization-json` (§0) | §0: datetime не нужен, кодеку нужен json |
 | Мелочи поведения | — | `Money.percentOf`/`divRoundHalfUp` — `require` (отрицательных сумм нет); `CashOuts.roundingTip` — `chips ≥ 0`; F < 0 в котировке выхода — `AmountNotPositive`; `Imports.plan` — `IllegalArgumentException`, если `local` другой игры; `TableSummary.incomeByBanker` всегда содержит текущего банкира (с нулями, если дохода нет); `renamePlayer` в HANDED_OVER — WrongGameStatus; причина отмены — `trim`, пустая → null | не было сказано |
-| Банкир-игрок без закупа | — | не считается «за столом» (`playersAtTable`) и не блокирует закрытие (`PlayersStillPlaying`) | QUESTIONS №15 |
+| Банкир-игрок без закупа | — | не считается «за столом» (`playersAtTable`) и не блокирует закрытие (`PlayersStillPlaying`); не получатель TIP_CHIPS (`TipRecipientNotSeated`) | QUESTIONS №15 |
+
+### Ревью M1 (fix(domain): address M1 review)
+
+| Где | Стало | Почему |
+| --- | --- | --- |
+| `Pricing.quoteNewPlayer`, `Commands.addPlayer` | void-банкир возвращается банкиром (без сбора); новый игрок с именем банкира при `bankerPlayerId == null` садит банкира за стол: `addPlayer` пишет `game.copy(bankerPlayerId = …)`, сбора нет | банкир-игрок не платит сбор ни в одном режиме |
+| `NotReversibleReason.LATER_PURCHASES_EXIST` | первую покупку нельзя отменить, пока есть действующие докупы | иначе следующий докуп стал бы «первым» без разового сбора |
+| `DomainError.TipRecipientNotSeated`, `CashOutQuote.tipAsChips` | TIP_CHIPS — только сидящему (PLAYING и покупал); вышедшему — TIP; банкиру — доход | банкир-игрок без закупа получил бы фишки, которых не сдаст |
+| `NotReversibleReason.TIP_RECIPIENT_CASHED_OUT` | выход с TIP_CHIPS не отменяется, если получатель с тех пор вышел | после отмены повторный выход записал бы чаевые рублями — двойная выплата |
+| `ImportConflictReason.LOCAL_NEWER`, `Imports.plan` | входящее старше/равно локальному с другими строками → `LOCAL_NEWER` (отчёт: пропущено); Extend без новых записей — только HANDED_OVER → активная | не переоткрывать закрытые игры и не откатывать имена из старой копии (QUESTIONS №16) |
+| `Suspicion` | порог `chips ≥ 20 000` | пример ТЗ «20 000 фишек — точно?» |
+| `LedgerValidator` | + `DUPLICATE_PLAYER_ID`, `TIP_TO_SELF`, `HANDOVER_INCOME_MISMATCH`, `HANDOVER_SEQ_OUT_OF_RANGE`, `INCOME_TAKEN_REVERSED` | целостность входящих пакетов |

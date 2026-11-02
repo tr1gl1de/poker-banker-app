@@ -4,9 +4,12 @@ import app.feltbook.core.domain.TestTable
 import app.feltbook.core.domain.model.BankerFeeMode
 import app.feltbook.core.domain.model.EntryType
 import app.feltbook.core.domain.model.GameRules
+import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.PlayerStatus
 import app.feltbook.core.domain.model.RakeMode
+import app.feltbook.core.domain.model.apply
+import app.feltbook.core.domain.tableFrom
 import app.feltbook.core.domain.transfer.DecodeResult
 import app.feltbook.core.domain.transfer.FeltbookCodec
 import app.feltbook.core.domain.transfer.FeltbookPackage
@@ -20,6 +23,8 @@ import kotlin.test.assertTrue
  * Полный набор property-тестов — задача M1.9 (qa-engineer).
  */
 class InvariantsTest {
+    private var handovers = 0
+    private var closes = 0
     private val names = listOf("Андрей", "Борис", "Влад", "Дима", "Егор")
 
     @Test
@@ -27,6 +32,7 @@ class InvariantsTest {
         val random = Random(20261102)
         val entries = (1..SEQUENCES).sumOf { run(random) }
         assertTrue(entries > SEQUENCES * STEPS / 2, "генератор действительно пишет записи: $entries")
+        assertTrue(handovers > SEQUENCES / 4 && closes > SEQUENCES / 10, "передачи $handovers, закрытия $closes")
     }
 
     private fun run(random: Random): Int {
@@ -37,17 +43,19 @@ class InvariantsTest {
             rakeValue = random.nextLong(0, 20),
             splitPayment = random.nextBoolean(),
         )
-        val table = TestTable(rules = rules, banker = "Андрей", bankerPlays = random.nextBoolean())
+        var table = TestTable(rules = rules, banker = "Андрей", bankerPlays = random.nextBoolean())
         repeat(STEPS) {
             val before = table.snapshot
             table.later(random.nextInt(0, 30))
             try {
-                step(table, random)
+                if (random.nextInt(25) == 0) table = handOver(table, random) else step(table, random)
             } catch (_: DomainRuleViolation) {
                 // Недопустимое случайное действие: журнал не меняется.
             }
             val after = table.snapshot
-            assertEquals(before.entries, after.entries.take(before.entries.size), "журнал только дописывается")
+            if (after.game.id == before.game.id && after.handovers.size == before.handovers.size) {
+                assertEquals(before.entries, after.entries.take(before.entries.size), "журнал только дописывается")
+            }
             assertTrue(LedgerValidator.validate(after).isEmpty(), "валидатор: ${LedgerValidator.validate(after)}")
             assertCashIdentity(table.state.table)
         }
@@ -96,8 +104,72 @@ class InvariantsTest {
                 table.apply(Commands.forgiveDebt(table.snapshot, it.player.id, null, table.clock.stamp()))
             }
 
-            else -> table.apply(Commands.payRake(table.snapshot, table.clock.stamp()))
+            else -> if (random.nextBoolean()) {
+                lifecycle(
+                    table,
+                    random,
+                )
+            } else {
+                table.apply(Commands.payRake(table.snapshot, table.clock.stamp()))
+            }
         }
+    }
+
+    /** Завершить / вернуть / закрыть / погасить после закрытия / переоткрыть. */
+    private fun lifecycle(table: TestTable, random: Random) {
+        val snapshot = table.snapshot
+        when (snapshot.game.status) {
+            GameStatus.RUNNING -> table.apply(Commands.finish(snapshot))
+
+            GameStatus.SETTLING -> if (random.nextInt(3) == 0) {
+                table.apply(Commands.resume(snapshot))
+            } else {
+                table.apply(
+                    Commands.close(
+                        snapshot,
+                        random.nextBoolean(),
+                        CloseConfirmation.entries.toSet(),
+                        table.clock.stamp(),
+                    ),
+                )
+                closes++
+            }
+
+            GameStatus.CLOSED -> {
+                val debtor = table.state.players.firstOrNull { it.debt > 0 }
+                if (debtor != null && random.nextBoolean()) {
+                    table.apply(
+                        Commands.pay(
+                            snapshot,
+                            debtor.player.id,
+                            random.nextLong(1, debtor.debt + 1),
+                            table.clock.stamp(),
+                            "Пётр",
+                        ),
+                    )
+                } else {
+                    table.apply(Commands.reopen(snapshot, null))
+                }
+            }
+
+            else -> Unit
+        }
+    }
+
+    /** Передача посреди игры: отправитель коммитит senderChange, игра продолжается у получателя. */
+    private fun handOver(table: TestTable, random: Random): TestTable {
+        val to = listOf("Влад", "Пётр", "Олег").random(random)
+        val prepared = Handovers.prepare(table.snapshot, to, random.nextBoolean(), table.clock.stamp())
+        val sender = table.snapshot.apply(prepared.senderChange)
+        assertTrue(LedgerValidator.validate(sender).isEmpty(), "отправитель: ${LedgerValidator.validate(sender)}")
+        assertEquals(prepared.outgoing.entries, sender.entries)
+        val seat = table.state.players.filter { !it.isVoid }.randomOrNull(random)?.takeIf { random.nextBoolean() }
+        val change = Handovers.accept(prepared.outgoing, prepared.handover, null, null, seat?.player?.id)
+        val received = GameSnapshot(change.game!!, change.players, change.entries, change.handovers)
+        assertTrue(prepared.handover.incomeTaken <= maxOf(0L, prepared.act.fromBankerIncome), "§7.7: забрано ≤ дохода")
+        assertTrue(LedgerValidator.validate(received).isEmpty())
+        handovers++
+        return tableFrom(received)
     }
 
     private fun cashOut(table: TestTable, player: PlayerState, state: GameState, random: Random) {
@@ -108,10 +180,13 @@ class InvariantsTest {
             random.nextBoolean() || recipients.isEmpty() -> Tip(random.nextLong(1, chips + 1), TipTarget.Banker)
             else -> Tip(random.nextLong(1, chips + 1), TipTarget.ToPlayer(recipients.random(random).player.id))
         }
-        val settlement = when (random.nextInt(3)) {
-            0 -> SettlementChoice.Full
-            1 -> SettlementChoice.None
-            else -> SettlementChoice.Partial(1)
+        val balance = kotlin.math.abs(
+            CashOuts.quote(table.snapshot, player.player.id, chips, tip, table.clock.now).balance,
+        )
+        val settlement = when {
+            random.nextInt(3) == 0 -> SettlementChoice.None
+            balance > 1 && random.nextBoolean() -> SettlementChoice.Partial(random.nextLong(1, balance))
+            else -> SettlementChoice.Full
         }
         table.apply(
             Commands.cashOut(table.snapshot, player.player.id, chips, tip, settlement, true, table.clock.stamp()),

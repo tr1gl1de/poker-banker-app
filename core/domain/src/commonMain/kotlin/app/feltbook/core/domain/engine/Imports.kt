@@ -30,22 +30,25 @@ enum class ImportConflictReason {
     /** Стало бы две активные игры. */
     SECOND_ACTIVE_GAME,
 
+    /**
+     * Локальная копия новее или равна по журналу, а строки игры/игроков отличаются (старая резервная копия):
+     * пропустить, ничего не откатывать.
+     */
+    LOCAL_NEWER,
+
     /** Входящий журнал не прошёл [LedgerValidator]. */
     INVALID_LEDGER,
 }
 
 object Imports {
-    /** Чистое решение «что делать с входящей игрой». Никогда не удаляет и не меняет локальные записи журнала. */
+    /**
+     * Чистое решение «что делать с входящей игрой». Никогда не удаляет и не меняет локальные записи журнала.
+     * Без новых записей и актов строки игры и игроков меняются только при возврате своей же переданной игры
+     * (локальная HANDED_OVER → входящая активная, QUESTIONS №13); иначе — Identical или `LOCAL_NEWER`.
+     */
     fun plan(incoming: GameSnapshot, local: GameSnapshot?, activeGameId: GameId?): ImportPlan {
-        val game = incoming.game.let {
-            if (it.status ==
-                GameStatus.CREATED
-            ) {
-                it.copy(status = GameStatus.RUNNING)
-            } else {
-                it
-            }
-        }
+        val status = incoming.game.status
+        val game = if (status == GameStatus.CREATED) incoming.game.copy(status = GameStatus.RUNNING) else incoming.game
         val id = game.id
         require(local == null || local.game.id == id) { "local game ${local?.game?.id} is not $id" }
         return when {
@@ -58,10 +61,13 @@ object Imports {
                 GameChange(id, game, incoming.players, incoming.entries, incoming.handovers),
             )
 
-            !local.entries.isPrefixOf(incoming.entries) || !local.handovers.isPrefixOf(incoming.handovers) ->
-                ImportPlan.Conflict(ImportConflictReason.DIVERGED_LEDGER)
+            local.entries.isPrefixOf(incoming.entries) && local.handovers.isPrefixOf(incoming.handovers) ->
+                extend(local, incoming.copy(game = game))
 
-            else -> extend(local, incoming.copy(game = game))
+            incoming.entries.isPrefixOf(local.entries) && incoming.handovers.isPrefixOf(local.handovers) ->
+                ImportPlan.Conflict(ImportConflictReason.LOCAL_NEWER)
+
+            else -> ImportPlan.Conflict(ImportConflictReason.DIVERGED_LEDGER)
         }
     }
 
@@ -74,9 +80,13 @@ object Imports {
             entries = incoming.entries.drop(local.entries.size),
             handovers = incoming.handovers.drop(local.handovers.size),
         )
-        val unchanged =
-            change.game == null && players.isEmpty() && change.entries.isEmpty() && change.handovers.isEmpty()
-        return if (unchanged) ImportPlan.Identical else ImportPlan.Extend(change)
+        val newRecords = change.entries.isNotEmpty() || change.handovers.isNotEmpty()
+        val returnedToSender = local.game.status == GameStatus.HANDED_OVER && incoming.game.status.isActive
+        return when {
+            newRecords || (returnedToSender && change.game != null) -> ImportPlan.Extend(change)
+            change.game == null && players.isEmpty() -> ImportPlan.Identical
+            else -> ImportPlan.Conflict(ImportConflictReason.LOCAL_NEWER)
+        }
     }
 
     private fun <T> List<T>.isPrefixOf(other: List<T>): Boolean = size <= other.size && this == other.subList(0, size)
