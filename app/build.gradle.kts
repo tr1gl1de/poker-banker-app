@@ -16,6 +16,18 @@ android {
         applicationId = "app.feltbook"
     }
 
+    // Интерфейс только на русском (ТЗ §9): ресурсы других языков из библиотек не попадают в APK.
+    androidResources {
+        localeFilters += listOf("ru")
+    }
+
+    // Язык один и задаётся в коде (RussianLocale) — языковые сплиты AAB не нужны.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     signingConfigs {
         if (keystorePath != null) {
             create("release") {
@@ -37,6 +49,14 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        // Uuid и kotlin.time.Instant доменной модели (как в :core:domain).
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
+}
+
 dependencies {
     implementation(projects.core.domain)
     implementation(projects.core.data)
@@ -55,4 +75,6 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.profileinstaller)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -4,10 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -74,6 +76,8 @@ fun FeltbookBottomBar(
                     )
                 }.windowInsetsPadding(windowInsets)
                 .heightIn(min = FeltbookDimens.bottomBarHeight)
+                // Пункты тянутся на высоту панели, а не окна (в Scaffold панель меряется до высоты экрана).
+                .height(IntrinsicSize.Min)
                 .padding(bottom = 8.dp)
                 .selectableGroup(),
         verticalAlignment = Alignment.CenterVertically,

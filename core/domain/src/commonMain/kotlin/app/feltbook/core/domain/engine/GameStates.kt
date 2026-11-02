@@ -253,7 +253,7 @@ object GameStates {
 }
 
 /** За столом и уже покупал: банкир-игрок без закупа не считается сидящим и не мешает закрыть игру. */
-internal val PlayerState.isSeated: Boolean
+val PlayerState.isSeated: Boolean
     get() = status == PlayerStatus.PLAYING && !isVoid && buyInCount > 0
 
 /** `outstanding` игрока по данному набору действующих записей (§3.3). */

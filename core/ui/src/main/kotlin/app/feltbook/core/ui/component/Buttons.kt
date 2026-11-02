@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -118,6 +119,7 @@ fun BrassButton(
     enabled: Boolean = true,
     trailingIcon: ImageVector? = null,
     contentDescription: String? = null,
+    leadingGlyph: String? = null,
 ) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
@@ -149,6 +151,14 @@ fun BrassButton(
         horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (leadingGlyph != null) {
+            Text(
+                text = leadingGlyph,
+                style = type.glyphButton,
+                color = content,
+                modifier = Modifier.clearAndSetSemantics {},
+            )
+        }
         ButtonLabel(
             text = text,
             style = textStyle,

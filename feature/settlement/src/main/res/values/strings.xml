@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Итог игры (m3-ui-spec §11.10). Суммы (%1$s) приходят уже отформатированными (MoneyFormat). -->
+<resources>
+    <string name="settlement_title">Итог игры</string>
+    <string name="settlement_back">Назад к столу</string>
+    <string name="settlement_subtitle">%1$s · %2$s · %3$s</string>
+    <string name="settlement_subtitle_rebuys">" · %1$s"</string>
+    <string name="settlement_chips_ok">Фишки сошлись: выдано %1$s = сдано %2$s</string>
+    <string name="settlement_chips_diff">Фишки не сошлись: выдано %1$s, сдано %2$s (%3$s)</string>
+    <string name="settlement_rake_title">♣︎ Заведению · рейк</string>
+    <string name="settlement_rake_single">одной суммой</string>
+    <string name="settlement_rake_incl_debt">полностью, включая долг</string>
+    <string name="settlement_rake_paid">отдано %1$s</string>
+    <string name="settlement_banker_title">♥︎ Банкиру</string>
+    <string name="settlement_banker_breakdown">сборы %1$s · чаевые %2$s</string>
+    <string name="settlement_banker_forgiven">" · прощено %1$s"</string>
+    <string name="settlement_banker_after_debt">после погашения долга</string>
+    <string name="settlement_banker_by_name">%1$s %2$s</string>
+    <string name="settlement_expected_cash">♦︎ Должно быть в кассе</string>
+    <string name="settlement_not_received">Не получено: %1$s</string>
+    <string name="settlement_cash_now">На руках сейчас</string>
+    <string name="settlement_cash_negative_note">%1$s — банкир доплатил из своих, вернётся, когда погасят долг</string>
+    <string name="settlement_unpaid">Не оплачено</string>
+    <string name="settlement_left_with_debt">%1$s ушёл с долгом</string>
+    <string name="settlement_unpaid_note">долг перейдёт в «Открытые долги» и всплывёт, когда %1$s сядет за стол</string>
+    <string name="settlement_unpaid_payouts">Ещё не выплачено</string>
+    <string name="settlement_unpaid_payouts_note">банкир должен вышедшим</string>
+    <string name="settlement_players">Расчёт с игроками</string>
+    <string name="settlement_row_pays">платит %1$s</string>
+    <string name="settlement_row_gets">получает %1$s</string>
+    <string name="settlement_row_even">квиты</string>
+    <string name="settlement_row_meta">начислено %1$s · оплачено %2$s · вывод %3$s</string>
+    <string name="settlement_row_meta_tips">" (%1$s чаевых)"</string>
+    <string name="settlement_row_meta_early">" · ранний выход"</string>
+    <string name="settlement_row_paid">заплатил %1$s ✓</string>
+    <string name="settlement_row_received">получил %1$s ✓</string>
+    <string name="settlement_row_debt">долг %1$s</string>
+    <string name="settlement_row_banker_owes">банкир должен %1$s</string>
+    <string name="settlement_row_playing">за столом</string>
+    <string name="settlement_still_playing">За столом ещё %1$s — выведите их, чтобы закрыть игру</string>
+    <string name="settlement_cash_out">Выход</string>
+    <string name="settlement_share">Поделиться итогом</string>
+    <string name="settlement_close_rake">Рейк отдан · закрыть игру</string>
+    <string name="settlement_close">Закрыть игру</string>
+    <string name="settlement_close_with_debt">Закрыть игру с долгом</string>
+    <string name="settlement_close_with_debt_hint">удерживайте · рейк %1$s отдан заведению</string>
+    <string name="settlement_close_unpaid_hint">удерживайте · банкир ещё должен %1$s</string>
+    <string name="settlement_chips_confirm_title">Фишки не сошлись</string>
+    <string name="settlement_chips_confirm_body">Сдано на %1$s меньше, чем выдано. Закрыть игру с расхождением?</string>
+    <string name="settlement_chips_confirm_body_more">Сдано на %1$s больше, чем выдано. Закрыть игру с расхождением?</string>
+    <string name="settlement_chips_confirm_keep">Проверить ещё</string>
+    <string name="settlement_share_header">Feltbook · %1$s · %2$s</string>
+    <string name="settlement_share_pays">%1$s платит %2$s</string>
+    <string name="settlement_share_gets">%1$s получает %2$s</string>
+    <string name="settlement_share_even">%1$s — квиты</string>
+    <string name="settlement_share_totals">Рейк заведению %1$s · Банкиру %2$s</string>
+    <string name="settlement_share_chips_ok">Фишки сошлись: %1$s</string>
+    <string name="settlement_share_chips_diff">Фишки не сошлись: %1$s</string>
+    <string name="settlement_wrong_status">Сначала завершите игру: меню стола → «Завершить игру»</string>
+    <string name="settlement_error_generic">Не получилось сохранить. Попробуйте ещё раз</string>
+</resources>

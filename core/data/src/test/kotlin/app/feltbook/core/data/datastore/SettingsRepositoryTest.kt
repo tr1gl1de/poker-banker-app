@@ -47,6 +47,7 @@ class SettingsRepositoryTest {
             minPlayMinutes = 90,
         ),
         lastBankerName = "Олег",
+        bankerPlays = false,
         themeMode = ThemeMode.SYSTEM,
         dynamicColor = true,
         keepScreenOn = false,

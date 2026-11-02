@@ -10,12 +10,14 @@ enum class ThemeMode { DARK, LIGHT, SYSTEM }
  *   QUESTIONS №4.
  * @property lastBankerName имя банкира для «Новой игры», имя для Nearby-рекламы и `bankerName` погашений вне
  *   активной игры.
+ * @property bankerPlays последнее «Я тоже играю» в «Новой игре» (QUESTIONS №21), по умолчанию — играет.
  * @property dynamicColor «Цвета обоев — Material You вместо сукна», по умолчанию выключено.
  * @property oddsCalculatorVisible пасхалка открыта и пункт «Калькулятор шансов» виден; «скрыть» = false.
  */
 data class AppSettings(
     val rulesForNewGame: GameRules = GameRules.DEFAULT,
     val lastBankerName: String = "",
+    val bankerPlays: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.DARK,
     val dynamicColor: Boolean = false,
     val keepScreenOn: Boolean = true,

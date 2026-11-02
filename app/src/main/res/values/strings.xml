@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name" translatable="false">Feltbook</string>
-    <string name="brand_title" translatable="false">Feltbook</string>
-    <string name="brand_tagline">банк покерного стола</string>
+    <!-- §11.3 Навигация -->
+    <string name="nav_game">Игра</string>
+    <string name="nav_game_glyph" translatable="false">♠︎</string>
+    <string name="nav_history">История</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="easter_more_taps">Ещё %1$d…</string>
+    <string name="easter_unlocked">Секретный стол открыт</string>
+    <!-- Заглушки экранов следующих этапов -->
+    <string name="placeholder_soon">Раздел появится на следующем этапе</string>
+    <string name="placeholder_debts">Открытые долги</string>
+    <string name="placeholder_handover">Передача комнаты</string>
+    <string name="placeholder_game_detail">Карточка игры</string>
 </resources>

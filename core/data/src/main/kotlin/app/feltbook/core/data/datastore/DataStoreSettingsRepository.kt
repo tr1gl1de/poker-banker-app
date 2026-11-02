@@ -57,6 +57,7 @@ internal class DataStoreSettingsRepository @Inject constructor(private val dataS
                 minPlayMinutes = this[Keys.MIN_PLAY_MINUTES] ?: rules.minPlayMinutes,
             ),
             lastBankerName = this[Keys.LAST_BANKER_NAME] ?: defaults.lastBankerName,
+            bankerPlays = this[Keys.BANKER_PLAYS] ?: defaults.bankerPlays,
             themeMode = enumOr(this[Keys.THEME_MODE], defaults.themeMode),
             dynamicColor = this[Keys.DYNAMIC_COLOR] ?: defaults.dynamicColor,
             keepScreenOn = this[Keys.KEEP_SCREEN_ON] ?: defaults.keepScreenOn,
@@ -75,6 +76,7 @@ internal class DataStoreSettingsRepository @Inject constructor(private val dataS
         this[Keys.SPLIT_PAYMENT] = rules.splitPayment
         this[Keys.MIN_PLAY_MINUTES] = rules.minPlayMinutes
         this[Keys.LAST_BANKER_NAME] = settings.lastBankerName
+        this[Keys.BANKER_PLAYS] = settings.bankerPlays
         this[Keys.THEME_MODE] = settings.themeMode.name
         this[Keys.DYNAMIC_COLOR] = settings.dynamicColor
         this[Keys.KEEP_SCREEN_ON] = settings.keepScreenOn
@@ -95,6 +97,7 @@ internal class DataStoreSettingsRepository @Inject constructor(private val dataS
         val SPLIT_PAYMENT = booleanPreferencesKey("rules_splitPayment")
         val MIN_PLAY_MINUTES = intPreferencesKey("rules_minPlayMinutes")
         val LAST_BANKER_NAME = stringPreferencesKey("lastBankerName")
+        val BANKER_PLAYS = booleanPreferencesKey("bankerPlays")
         val THEME_MODE = stringPreferencesKey("themeMode")
         val DYNAMIC_COLOR = booleanPreferencesKey("dynamicColor")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keepScreenOn")

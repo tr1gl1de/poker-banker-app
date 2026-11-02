@@ -44,10 +44,10 @@
     <string name="chip_last_line2">прошлый</string>
     <!-- [предл.] a11y фишки «как прошлый» (m3-ui-spec §4.2) -->
     <string name="chip_last_a11y">Как прошлый раз, %1$s</string>
-    <string name="suit_spades">♠</string>
-    <string name="suit_hearts">♥</string>
-    <string name="suit_diamonds">♦</string>
-    <string name="suit_clubs">♣</string>
+    <string name="suit_spades">♠︎</string>
+    <string name="suit_hearts">♥︎</string>
+    <string name="suit_diamonds">♦︎</string>
+    <string name="suit_clubs">♣︎</string>
     <string name="chevron">" ›"</string>
     <string-array name="months_short">
         <item>янв</item>

@@ -48,7 +48,15 @@ import app.feltbook.core.ui.theme.feltBackground
 // ---------- MetricTile (§4.18) ----------
 
 /** Цветовой вариант плитки. */
-enum class MetricVariant { Neutral, Owe, Brass, Pay }
+enum class MetricVariant {
+    Neutral,
+
+    /** Как [Neutral], но с рамкой `brassHairline` (плитки табло и итога игры). */
+    NeutralOutlined,
+    Owe,
+    Brass,
+    Pay,
+}
 
 /** Размер плитки: радиус, отступы и стиль значения. */
 enum class MetricSize(val radius: Dp, val horizontal: Dp, val vertical: Dp, val gap: Dp) {
@@ -84,6 +92,7 @@ private data class TileColors(
 
 private fun MetricVariant.colors(c: FeltbookColors): TileColors = when (this) {
     MetricVariant.Neutral -> TileColors(c.card, null, c.ledger, c.ink, c.ledger)
+    MetricVariant.NeutralOutlined -> TileColors(c.card, c.brassHairline, c.ledger, c.ink, c.ledger)
     MetricVariant.Owe -> TileColors(c.oweBackground, c.oweBorder, c.oweSoft, c.owe, c.oweSoft)
     MetricVariant.Brass -> TileColors(c.brassContainer, c.brassBorderStrong, c.brassLight, c.brassBright, c.brassMuted)
     MetricVariant.Pay -> TileColors(c.payContainer, c.payBorder, c.inkSoft, c.pay, c.inkSoft)
@@ -313,7 +322,15 @@ fun InfoBanner(text: String, variant: BannerVariant, modifier: Modifier = Modifi
 
 /** Строка расшифровки «Фишки 2 000 + рейк 200 = 2 300 ₽». [contentDescription] — для сумм со знаком. */
 @Immutable
-data class BreakdownRow(val label: String, val value: String, val contentDescription: String? = null)
+data class BreakdownRow(
+    val label: String,
+    val value: String,
+    val contentDescription: String? = null,
+    /** Цвет значения (`null` — `ink`): «Итого в долг» — `owe`, «Долг игрока» — `owe`. */
+    val valueColor: Color? = null,
+    /** Строка выделена жирным («К выводу 1:1»). */
+    val bold: Boolean = false,
+)
 
 /**
  * Расшифровка итога (`dl`): строки «подпись — значение» через [AmountRowLayout] (значение не переносится),
@@ -347,7 +364,12 @@ fun BreakdownList(
         verticalArrangement = Arrangement.spacedBy(space = 6.dp),
     ) {
         rows.forEach { row ->
-            BreakdownLine(row, labelStyle = type.body, labelColor = labelColor, valueStyle = type.body)
+            BreakdownLine(
+                row,
+                labelStyle = if (row.bold) type.labelBold else type.body,
+                labelColor = if (row.bold) colors.ink else labelColor,
+                valueStyle = if (row.bold) type.labelBold else type.body,
+            )
         }
         if (total != null) {
             Column(Modifier.fillMaxWidth()) {
@@ -367,7 +389,7 @@ private fun BreakdownLine(row: BreakdownRow, labelStyle: TextStyle, labelColor: 
             AmountText(
                 text = row.value,
                 style = valueStyle,
-                color = FeltbookTheme.colors.ink,
+                color = row.valueColor ?: FeltbookTheme.colors.ink,
                 contentDescription = row.contentDescription,
             )
         },
