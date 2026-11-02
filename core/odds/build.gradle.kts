@@ -8,12 +8,16 @@ plugins {
 kotlin {
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
+            // Flow и CoroutineDispatcher — в публичном API EquityCalculator.
+            api(libs.kotlinx.coroutines.core)
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
 
-// Как у домена: ≥ 95 % строк (koverVerify входит в check). Ветвления — с появлением кода на M6.
+// Как у домена: ≥ 95 % строк (koverVerify входит в check).
 kover {
     reports {
         verify {
