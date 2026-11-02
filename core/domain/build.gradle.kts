@@ -5,10 +5,15 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        // Uuid и kotlin.time.Instant — opt-in на уровне модуля (docs/plan/m1-domain.md §0).
+        optIn.add("kotlin.uuid.ExperimentalUuidApi")
+        optIn.add("kotlin.time.ExperimentalTime")
+    }
     sourceSets {
         commonMain.dependencies {
-            api(libs.kotlinx.datetime)
-            api(libs.kotlinx.serialization.core)
+            // Пакет .feltbook (ADR 0007).
+            api(libs.kotlinx.serialization.json)
             // Только Flow в интерфейсах репозиториев.
             api(libs.kotlinx.coroutines.core)
         }
