@@ -14,26 +14,19 @@ import app.feltbook.core.domain.model.PlayerId
 import app.feltbook.core.domain.model.apply
 
 /** Стол в тестах: снимок + часы, команды применяются через `GameSnapshot.apply`. */
-class TestTable(
-    rules: GameRules = GameRules.DEFAULT,
-    banker: String = "Олег",
-    bankerPlays: Boolean = false,
-    val clock: TestClock = TestClock(),
-) {
-    var snapshot: GameSnapshot
+class TestTable(initial: GameSnapshot, val clock: TestClock) {
+    constructor(
+        rules: GameRules = GameRules.DEFAULT,
+        banker: String = "Олег",
+        bankerPlays: Boolean = false,
+        clock: TestClock = TestClock(),
+    ) : this(started(rules, banker, bankerPlays, clock), clock)
+
+    var snapshot: GameSnapshot = initial
         private set
 
     /** Время по умолчанию — через час после старта, чтобы выходы не были ранними. */
     fun later(minutes: Int = 61) = clock.advance(kotlin.time.Duration.parse("${minutes}m"))
-
-    init {
-        val change = Commands.startGame(
-            NewGameInput("Пятница", "18 окт", banker, bankerPlays, rules),
-            null,
-            clock.stamp(),
-        )
-        snapshot = GameSnapshot(change.game!!, change.players, emptyList(), emptyList())
-    }
 
     val state: GameState get() = GameStates.compute(snapshot)
 
@@ -75,3 +68,12 @@ class TestTable(
     fun payOut(name: String, amount: Long): GameChange =
         apply(Commands.payOut(snapshot, id(name), amount, clock.stamp()))
 }
+
+internal fun started(rules: GameRules, banker: String, bankerPlays: Boolean, clock: TestClock): GameSnapshot {
+    val change = Commands.startGame(NewGameInput("Пятница", "18 окт", banker, bankerPlays, rules), null, clock.stamp())
+    return GameSnapshot(change.game!!, change.players, emptyList(), emptyList())
+}
+
+/** Продолжить игру с готового снимка (например, принятого по передаче). */
+fun tableFrom(snapshot: GameSnapshot): TestTable =
+    TestTable(initial = snapshot, clock = TestClock(snapshot.entries.lastOrNull()?.createdAt ?: T0))
