@@ -152,7 +152,7 @@ class HandoverExample84Test {
         assertEquals(2, restored.handovers.size)
         // Повторный приём того же пакета — ничего нового.
         val again = Handovers.accept(back.outgoing, back.handover, restored, restored.game, local.players.first().id)
-        assertEquals(app.feltbook.core.domain.model.GameChange(restored.game.id), again)
+        assertEquals(app.feltbook.core.domain.model.GameChange(restored.game.id, baseSeq = restored.lastSeq), again)
     }
 
     @Test

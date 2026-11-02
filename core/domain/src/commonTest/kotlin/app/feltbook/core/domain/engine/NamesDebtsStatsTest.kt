@@ -154,6 +154,7 @@ class StatsTest {
         table.apply(
             GameChange(
                 table.snapshot.game.id,
+                baseSeq = table.snapshot.lastSeq,
                 game = table.snapshot.game.copy(status = GameStatus.HANDED_OVER),
                 handovers = listOf(handover),
             ),

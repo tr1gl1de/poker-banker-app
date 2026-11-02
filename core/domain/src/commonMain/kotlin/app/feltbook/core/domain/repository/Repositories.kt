@@ -30,8 +30,9 @@ interface GameRepository {
      * Все изменения — одной транзакцией: upsert игр/игроков, INSERT записей и актов, upsert имён новых и
      *   переименованных
      * игроков в справочник (`firstSeenAt` = `joinedAt` при первом появлении). Проверяет внутри транзакции:
-     * `seq` продолжает журнал (уникальный индекс `(gameId, seq)`), активных игр после изменения ≤ 1.
-     * Нарушение — исключение и откат всего.
+     * `lastSeq` игры в базе = `GameChange.baseSeq`, `seq` продолжает журнал (уникальный индекс `(gameId, seq)`), id
+     * игроков/записей/актов не заняты другой игрой, активных игр после изменения ≤ 1, время — целые миллисекунды.
+     * Нарушение — [CommitRejectedException] (время — IllegalArgumentException) и откат всего.
      */
     suspend fun commit(changes: List<GameChange>)
 
@@ -66,12 +67,25 @@ interface BackupRepository {
 
     /**
      * Импорт по `Imports.plan` для каждой игры одной транзакцией; ничего локального не затирает (конфликты — в отчёте).
+     * Не бросает: нечитаемый файл или сбой базы — [ImportReport.failure], тогда не импортировано ничего.
      */
     suspend fun importAll(text: String): ImportReport
 }
 
+/** Почему файл не импортирован целиком. */
+sealed interface ImportFailure {
+    /** Файл не разобран: не Feltbook, новая версия, повреждён, не резервная копия (`DecodeResult.WrongKind`). */
+    data class Unreadable(val reason: DecodeResult.Failure) : ImportFailure
+
+    /** Сбой записи в базу; транзакция откачена. */
+    data class StorageFailed(val cause: Throwable) : ImportFailure
+}
+
+/**
+ * @property conflicts игры, которые пропущены. `LOCAL_NEWER` — не ошибка: «пропущено, на телефоне новее».
+ */
 data class ImportReport(
-    val failure: DecodeResult.Failure?,
+    val failure: ImportFailure?,
     val added: Int,
     val extended: Int,
     val identical: Int,

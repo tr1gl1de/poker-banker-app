@@ -145,6 +145,18 @@ class DaoTest {
     }
 
     @Test
+    fun `акты читаются по ledgerSeq, а не по времени (часы телефонов расходятся)`() = runTest {
+        seedGame()
+        val act1 = HandoverEntity(Uuid.fromLongs(5, 1), gameId, "Олег", "Влад", 1_000, 0, 1, T0 + 10.minutes)
+        val act2 = HandoverEntity(Uuid.fromLongs(5, 2), gameId, "Влад", "Олег", 900, 0, 2, T0 + 5.minutes)
+        db.handovers().insert(listOf(act2))
+        db.handovers().insert(listOf(act1))
+
+        assertEquals(listOf(act1, act2), db.handovers().byGame(gameId))
+        assertEquals(listOf(act1, act2), db.handovers().all())
+    }
+
+    @Test
     fun `игроки читаются в порядке посадки, переименование не меняет порядок`() = runTest {
         db.games().upsert(game())
         val ids = (1L..3L).map { Uuid.fromLongs(2, 10 + it) }

@@ -203,6 +203,23 @@ class EdgeCasesTest {
         val again = Commands.buyIn(table.snapshot, table.id("Андрей"), 1_000, BuyInPayment.DEBT, table.clock.stamp())
         assertTrue(again.entries.none { e -> change.entries.any { it.operationId == e.operationId } })
         assertEquals(ImportPlan.Identical, Imports.plan(table.snapshot, table.snapshot, table.snapshot.game.id))
+        // Изменение без записей (только строка игры) тоже помнит, по какому снимку построено.
+        val staleFinish = Commands.finish(before)
+        assertEquals(before.lastSeq, staleFinish.baseSeq)
+        assertFailsWith<IllegalArgumentException> { table.snapshot.apply(staleFinish) }
+        assertEquals(table.snapshot.lastSeq, Commands.finish(table.snapshot).baseSeq)
+    }
+
+    @Test
+    fun `id входящей игры заняты другой локальной игрой — ID_COLLISION`() {
+        val table = TestTable()
+        table.add("Андрей", 1_000)
+        val taken = setOf(table.snapshot.entries.first().id.value)
+        assertEquals(
+            ImportPlan.Conflict(ImportConflictReason.ID_COLLISION),
+            Imports.plan(table.snapshot, null, null, foreignIds = taken),
+        )
+        assertIs<ImportPlan.Insert>(Imports.plan(table.snapshot, null, null))
     }
 
     @Test

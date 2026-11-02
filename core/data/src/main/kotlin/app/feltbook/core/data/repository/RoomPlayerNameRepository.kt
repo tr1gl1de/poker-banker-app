@@ -22,7 +22,7 @@ internal class RoomPlayerNameRepository @Inject constructor(private val db: Felt
     override suspend fun merge(from: String, into: String) {
         db.withTransaction {
             val directory = db.playerNames().all().map { it.toDomain() }
-            require(PlayerNames.canMerge(from, into, directory)) { "cannot merge '$from' into '$into'" }
+            require(PlayerNames.canMerge(from, into, directory)) { "names cannot be merged" }
             db.playerNames().setMergedInto(PlayerNames.normalize(from), PlayerNames.normalize(into))
         }
     }

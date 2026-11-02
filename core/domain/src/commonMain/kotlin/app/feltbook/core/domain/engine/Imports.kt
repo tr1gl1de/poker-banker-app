@@ -4,6 +4,7 @@ import app.feltbook.core.domain.model.GameChange
 import app.feltbook.core.domain.model.GameId
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
+import kotlin.uuid.Uuid
 
 /** Результат сопоставления входящей игры с локальной (импорт резервной копии и приём передачи). */
 sealed interface ImportPlan {
@@ -32,12 +33,18 @@ enum class ImportConflictReason {
 
     /**
      * Локальная копия новее или равна по журналу, а строки игры/игроков отличаются (старая резервная копия):
-     * пропустить, ничего не откатывать.
+     * пропустить, ничего не откатывать. Это не ошибка: интерфейс показывает «пропущено, на телефоне новее».
      */
     LOCAL_NEWER,
 
     /** Входящий журнал не прошёл [LedgerValidator]. */
     INVALID_LEDGER,
+
+    /**
+     * Id игрока, записи или акта входящей игры уже занят строкой другой локальной игры (`foreignIds` в
+     * [Imports.plan]): игра пропускается, иначе её строки перезаписали бы чужие.
+     */
+    ID_COLLISION,
 }
 
 object Imports {
@@ -45,8 +52,15 @@ object Imports {
      * Чистое решение «что делать с входящей игрой». Никогда не удаляет и не меняет локальные записи журнала.
      * Без новых записей и актов строки игры и игроков меняются только при возврате своей же переданной игры
      * (локальная HANDED_OVER → входящая активная, QUESTIONS №13); иначе — Identical или `LOCAL_NEWER`.
+     * @param foreignIds те id игроков, записей и актов входящей игры, которые в базе принадлежат другим играм
+     *   (ищет репозиторий); непустое множество — [ImportConflictReason.ID_COLLISION].
      */
-    fun plan(incoming: GameSnapshot, local: GameSnapshot?, activeGameId: GameId?): ImportPlan {
+    fun plan(
+        incoming: GameSnapshot,
+        local: GameSnapshot?,
+        activeGameId: GameId?,
+        foreignIds: Set<Uuid> = emptySet(),
+    ): ImportPlan {
         val status = incoming.game.status
         val game = if (status == GameStatus.CREATED) incoming.game.copy(status = GameStatus.RUNNING) else incoming.game
         val id = game.id
@@ -54,11 +68,13 @@ object Imports {
         return when {
             LedgerValidator.validate(incoming).isNotEmpty() -> ImportPlan.Conflict(ImportConflictReason.INVALID_LEDGER)
 
+            foreignIds.isNotEmpty() -> ImportPlan.Conflict(ImportConflictReason.ID_COLLISION)
+
             game.status.isActive && activeGameId != null && activeGameId != id ->
                 ImportPlan.Conflict(ImportConflictReason.SECOND_ACTIVE_GAME)
 
             local == null -> ImportPlan.Insert(
-                GameChange(id, game, incoming.players, incoming.entries, incoming.handovers),
+                GameChange(id, 0L, game, incoming.players, incoming.entries, incoming.handovers),
             )
 
             local.entries.isPrefixOf(incoming.entries) && local.handovers.isPrefixOf(incoming.handovers) ->
@@ -75,6 +91,7 @@ object Imports {
         val players = incoming.players.filter { it != local.player(it.id) }
         val change = GameChange(
             gameId = incoming.game.id,
+            baseSeq = local.lastSeq,
             game = incoming.game.takeIf { it != local.game },
             players = players,
             entries = incoming.entries.drop(local.entries.size),

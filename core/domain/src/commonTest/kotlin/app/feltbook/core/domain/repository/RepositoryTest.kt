@@ -38,7 +38,7 @@ class RepositoryTest {
     @Test
     fun `одно изменение коммитится списком из одного элемента`() = runTest {
         val repository = RecordingRepository()
-        val change = GameChange(gameId(1))
+        val change = GameChange(gameId(1), baseSeq = 0)
         repository.commit(change)
         assertEquals(listOf(listOf(change)), repository.commits)
     }
@@ -46,14 +46,28 @@ class RepositoryTest {
     @Test
     fun `отчёт импорта`() {
         val report = ImportReport(
-            failure = DecodeResult.ChecksumMismatch,
+            failure = ImportFailure.Unreadable(DecodeResult.ChecksumMismatch),
             added = 1,
             extended = 2,
             identical = 3,
             conflicts = listOf(gameId(1) to ImportConflictReason.DIVERGED_LEDGER),
             playerNamesAdded = 4,
         )
-        assertEquals(DecodeResult.ChecksumMismatch, report.failure)
+        assertEquals(ImportFailure.Unreadable(DecodeResult.ChecksumMismatch), report.failure)
         assertEquals(4, report.playerNamesAdded)
+        val storage = IllegalStateException("disk")
+        assertEquals(storage, (ImportFailure.StorageFailed(storage) as ImportFailure.StorageFailed).cause)
+        assertEquals("BACKUP", DecodeResult.WrongKind(expected = "BACKUP", found = "HANDOVER").expected)
+    }
+
+    @Test
+    fun `отказ коммита несёт причину и исходную ошибку`() {
+        val cause = IllegalStateException("constraint")
+        val error = CommitRejectedException(CommitRejectedException.Reason.DUPLICATE_ID, "entry 1", cause)
+        assertEquals(CommitRejectedException.Reason.DUPLICATE_ID, error.reason)
+        assertEquals("entry 1", error.message)
+        assertEquals(cause, error.cause)
+        assertEquals(null, CommitRejectedException(CommitRejectedException.Reason.STALE_SEQ, "seq").cause)
+        assertEquals(5, CommitRejectedException.Reason.entries.size)
     }
 }

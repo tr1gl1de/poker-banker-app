@@ -1,5 +1,7 @@
 package app.feltbook.core.data.repository
 
+import androidx.room.deferredTransaction
+import androidx.room.useReaderConnection
 import androidx.room.withTransaction
 import app.feltbook.core.data.db.FeltbookDatabase
 import app.feltbook.core.domain.model.GameChange
@@ -8,6 +10,7 @@ import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.repository.GameRepository
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -23,9 +26,9 @@ internal class RoomGameRepository @Inject constructor(private val db: FeltbookDa
 
     override fun observeAllGames(): Flow<List<GameSnapshot>> = observe { store.loadAll() }
 
-    override suspend fun getGame(id: GameId): GameSnapshot? = db.withTransaction { store.load(id) }
+    override suspend fun getGame(id: GameId): GameSnapshot? = read { store.load(id) }
 
-    override suspend fun getActiveGame(): GameSnapshot? = db.withTransaction { loadActive() }
+    override suspend fun getActiveGame(): GameSnapshot? = read { loadActive() }
 
     override suspend fun commit(changes: List<GameChange>) {
         if (changes.isEmpty()) return
@@ -35,7 +38,7 @@ internal class RoomGameRepository @Inject constructor(private val db: FeltbookDa
     override suspend fun deleteGames(ids: Set<GameId>) {
         if (ids.isEmpty()) return
         db.withTransaction {
-            ids.map { it.value }.chunked(SQLITE_MAX_VARIABLES).forEach { db.games().delete(it) }
+            ids.map { it.value }.chunked(GameStore.MAX_VARIABLES).forEach { db.games().delete(it) }
         }
     }
 
@@ -48,11 +51,11 @@ internal class RoomGameRepository @Inject constructor(private val db: FeltbookDa
     @Suppress("SpreadOperator") // createFlow принимает только vararg; копия из четырёх строк на подписку.
     private fun <T> observe(load: suspend () -> T): Flow<T> = db.invalidationTracker
         .createFlow(*FeltbookDatabase.GAME_TABLES)
-        .map { db.withTransaction { load() } }
+        .conflate()
+        .map { read(load) }
         .distinctUntilChanged()
 
-    private companion object {
-        /** Предел параметров запроса SQLite на старых Android (999). */
-        const val SQLITE_MAX_VARIABLES = 900
-    }
+    /** Согласованное чтение нескольких таблиц: одна отложенная (DEFERRED) транзакция на соединении чтения. */
+    private suspend fun <T> read(load: suspend () -> T): T =
+        db.useReaderConnection { connection -> connection.deferredTransaction { load() } }
 }

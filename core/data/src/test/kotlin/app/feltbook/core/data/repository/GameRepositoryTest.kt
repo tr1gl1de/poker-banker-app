@@ -1,6 +1,5 @@
 package app.feltbook.core.data.repository
 
-import android.database.sqlite.SQLiteConstraintException
 import androidx.room.withTransaction
 import app.cash.turbine.test
 import app.feltbook.core.data.TableScript
@@ -9,7 +8,6 @@ import app.feltbook.core.data.assertThrowsSuspend
 import app.feltbook.core.data.db.toDomain
 import app.feltbook.core.data.gameRepository
 import app.feltbook.core.data.inMemoryDatabase
-import app.feltbook.core.data.repository.CommitRejectedException.Reason
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.NewGameInput
@@ -18,7 +16,10 @@ import app.feltbook.core.domain.model.GameChange
 import app.feltbook.core.domain.model.GameId
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.PlayerName
+import app.feltbook.core.domain.repository.CommitRejectedException
+import app.feltbook.core.domain.repository.CommitRejectedException.Reason
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.nanoseconds
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -106,7 +107,9 @@ class GameRepositoryTest {
             bad.copy(entries = bad.entries.map { it.copy(id = good.entries.first().id) })
         }
 
-        assertThrowsSuspend<SQLiteConstraintException> { repository.commit(listOf(good, reusedId)) }
+        val error = assertThrowsSuspend<CommitRejectedException> { repository.commit(listOf(good, reusedId)) }
+
+        assertEquals(Reason.DUPLICATE_ID, error.reason)
 
         assertEquals(table.snapshot, repository.getGame(table.snapshot.game.id))
     }
@@ -131,9 +134,64 @@ class GameRepositoryTest {
     @Test
     fun `изменение несуществующей игры без строки игры отклоняется`() = runTest {
         val error = assertThrowsSuspend<CommitRejectedException> {
-            repository.commit(listOf(GameChange(GameId(Uuid.fromLongs(7, 7)))))
+            repository.commit(listOf(GameChange(GameId(Uuid.fromLongs(7, 7)), baseSeq = 0)))
         }
         assertEquals(Reason.UNKNOWN_GAME, error.reason)
+    }
+
+    @Test
+    fun `изменение только строки игры по устаревшему снимку отклоняется`() = runTest {
+        val table = table().runningGame()
+        val stale = table.snapshot
+        table.play { s, st -> Commands.buyIn(s, table.player("Влад"), 500, BuyInPayment.PAID, st) }
+
+        val error = assertThrowsSuspend<CommitRejectedException> { repository.commit(listOf(Commands.finish(stale))) }
+
+        assertEquals(Reason.STALE_SEQ, error.reason)
+        assertEquals(GameStatus.RUNNING, repository.getGame(stale.game.id)?.game?.status)
+        // По свежему снимку то же действие проходит.
+        repository.commit(listOf(Commands.finish(table.snapshot)))
+        assertEquals(GameStatus.SETTLING, repository.getGame(stale.game.id)?.game?.status)
+    }
+
+    @Test
+    fun `id игрока или записи другой игры отклоняется до записи — чужая строка не перезаписывается`() = runTest {
+        val closed = table().closedGameWithDebt()
+        val running = table().runningGame()
+        val vlad = closed.snapshot.players.first { it.name == "Влад" }
+        val stolenPlayer = Commands.addPlayer(running.snapshot, "Костя", 1_000, BuyInPayment.PAID, clock.stamp())
+            .let { change ->
+                val newId = change.players.single().id
+                change.copy(
+                    players = change.players.map { it.copy(id = vlad.id) },
+                    entries = change.entries.map { if (it.playerId == newId) it.copy(playerId = vlad.id) else it },
+                )
+            }
+        val stolenEntry = Commands.buyIn(running.snapshot, running.player("Аня"), 500, BuyInPayment.DEBT, clock.stamp())
+            .let { change ->
+                change.copy(entries = change.entries.mapIndexed { i, e -> e.copy(id = closed.snapshot.entries[i].id) })
+            }
+
+        val first = assertThrowsSuspend<CommitRejectedException> { repository.commit(listOf(stolenPlayer)) }
+        val second = assertThrowsSuspend<CommitRejectedException> { repository.commit(listOf(stolenEntry)) }
+
+        assertEquals(Reason.FOREIGN_ROW, first.reason)
+        assertEquals(Reason.FOREIGN_ROW, second.reason)
+        assertEquals(closed.snapshot, repository.getGame(closed.snapshot.game.id))
+        assertEquals(running.snapshot, repository.getGame(running.snapshot.game.id))
+    }
+
+    @Test
+    fun `время с долями миллисекунды — команды через Stamp сохраняются без потерь, сырое отклоняется`() = runTest {
+        val subMs = TestClock(app.feltbook.core.data.T0 + 123_456.nanoseconds)
+        val table = TableScript(repository, subMs).runningGame()
+
+        assertEquals(table.snapshot, repository.getGame(table.snapshot.game.id))
+
+        val change = Commands.buyIn(table.snapshot, table.player("Влад"), 500, BuyInPayment.PAID, subMs.stamp())
+        val raw = change.copy(entries = change.entries.map { it.copy(createdAt = it.createdAt + 1.nanoseconds) })
+        assertThrowsSuspend<IllegalArgumentException> { repository.commit(listOf(raw)) }
+        assertEquals(table.snapshot, repository.getGame(table.snapshot.game.id))
     }
 
     @Test

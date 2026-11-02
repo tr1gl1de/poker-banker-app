@@ -2,14 +2,12 @@ package app.feltbook.core.data.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.Room
 import app.feltbook.core.data.backup.RoomBackupRepository
 import app.feltbook.core.data.datastore.DataStoreSettingsRepository
+import app.feltbook.core.data.datastore.SettingsDataStore
 import app.feltbook.core.data.db.FeltbookDatabase
 import app.feltbook.core.data.db.Migrations
 import app.feltbook.core.data.repository.RoomGameRepository
@@ -49,12 +47,9 @@ internal object StorageModule {
     fun settingsDataStore(
         @ApplicationContext context: Context,
         @IoDispatcher io: CoroutineDispatcher,
-    ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
-        // Испорченный файл настроек — к значениям по умолчанию, а не падение приложения.
-        corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
-        scope = CoroutineScope(io + SupervisorJob()),
-        produceFile = { context.preferencesDataStoreFile(DataStoreSettingsRepository.FILE_NAME) },
-    )
+    ): DataStore<Preferences> = SettingsDataStore.create(CoroutineScope(io + SupervisorJob())) {
+        context.preferencesDataStoreFile(SettingsDataStore.FILE_NAME)
+    }
 
     @Provides
     fun clock(): Clock = Clock.System
@@ -62,6 +57,10 @@ internal object StorageModule {
     @Provides
     @IoDispatcher
     fun ioDispatcher(): CoroutineDispatcher = Dispatchers.IO
+
+    @Provides
+    @DefaultDispatcher
+    fun defaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 }
 
 /** Реализации доменных репозиториев (интерфейсы — :core:domain, ADR 0006). */

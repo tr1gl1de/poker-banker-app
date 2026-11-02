@@ -14,19 +14,28 @@ import app.feltbook.core.domain.model.GameRules
 import app.feltbook.core.domain.repository.SettingsRepository
 import java.io.IOException
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 
 /**
  * Настройки в DataStore Preferences. Отсутствующий ключ (или нечитаемое значение перечисления) — значение по умолчанию
- * из `AppSettings()`, поэтому пустое хранилище = `AppSettings()`. Ошибка чтения файла — тоже значения по умолчанию.
+ * из `AppSettings()`, поэтому пустое хранилище = `AppSettings()`. Ошибка чтения файла (IOException) — один раз значения
+ * по умолчанию, затем повторные попытки чтения; испорченный файл заменяется пустым ([SettingsDataStore]).
  */
 internal class DataStoreSettingsRepository @Inject constructor(private val dataStore: DataStore<Preferences>) :
     SettingsRepository {
     override val settings: Flow<AppSettings> = dataStore.data
-        .catch { error -> if (error is IOException) emit(emptyPreferences()) else throw error }
+        .retryWhen { cause, attempt ->
+            if (cause !is IOException) return@retryWhen false
+            // Один раз — значения по умолчанию, чтобы экран не ждал; дальше продолжаем читать файл с паузами.
+            if (attempt == 0L) emit(emptyPreferences())
+            delay(RETRY_DELAY * (1 shl attempt.coerceAtMost(MAX_BACKOFF_SHIFT).toInt()))
+            true
+        }
         .map { it.toSettings() }
         .distinctUntilChanged()
 
@@ -93,7 +102,8 @@ internal class DataStoreSettingsRepository @Inject constructor(private val dataS
         val ODDS_CALCULATOR_VISIBLE = booleanPreferencesKey("oddsCalculatorVisible")
     }
 
-    internal companion object {
-        const val FILE_NAME: String = "feltbook_settings"
+    private companion object {
+        val RETRY_DELAY = 500.milliseconds
+        const val MAX_BACKOFF_SHIFT = 6L
     }
 }

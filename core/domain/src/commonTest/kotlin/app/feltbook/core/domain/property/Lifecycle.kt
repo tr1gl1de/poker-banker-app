@@ -272,7 +272,7 @@ internal class Lifecycle(private val sim: Sim, private val table: TableActions) 
         assertEquals(before.table.cashOnHand - handover.incomeTaken, t.cashOnHand, "касса нового банкира")
         assertEquals(before.table.chipsInPlay, t.chipsInPlay)
         assertEquals(
-            GameChange(s.game.id),
+            GameChange(s.game.id, baseSeq = received.lastSeq),
             Handovers.accept(prepared.outgoing, handover, received, received.game, receiver),
             "повторный приём того же пакета — пустое изменение",
         )

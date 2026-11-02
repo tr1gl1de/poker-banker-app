@@ -147,7 +147,7 @@ class ReversalTest {
         val table = table()
         val taken =
             entry(table.snapshot.nextSeq, EntryType.INCOME_TAKEN, null, 100, op = 500, game = table.snapshot.game.id)
-        table.apply(GameChange(table.snapshot.game.id, entries = listOf(taken)))
+        table.apply(GameChange(table.snapshot.game.id, baseSeq = table.snapshot.lastSeq, entries = listOf(taken)))
         assertViolation(DomainError.OperationNotReversible(NotReversibleReason.INCOME_TAKEN)) {
             table.reverse(operationId(500))
         }

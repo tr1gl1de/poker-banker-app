@@ -316,7 +316,8 @@ data class Handover(
 /**
  * Игра целиком — то, что читают движок, экран и пакет передачи.
  * @property entries журнал строго по возрастанию `seq` (репозиторий гарантирует порядок).
- * @property handovers по возрастанию `at`.
+ * @property handovers по возрастанию `ledgerSeq` (при равенстве — в порядке записи), не по `at`: часы телефонов могут
+ *   расходиться.
  */
 data class GameSnapshot(
     val game: Game,
@@ -324,8 +325,11 @@ data class GameSnapshot(
     val entries: List<LedgerEntry>,
     val handovers: List<Handover>,
 ) {
+    /** `seq` последней записи, 0 — журнал пуст. С ним сверяется `GameChange.baseSeq`. */
+    val lastSeq: Long get() = entries.lastOrNull()?.seq ?: 0L
+
     /** `seq` следующей записи. */
-    val nextSeq: Long get() = (entries.lastOrNull()?.seq ?: 0L) + 1L
+    val nextSeq: Long get() = lastSeq + 1L
 
     fun player(id: PlayerId): Player? = players.firstOrNull { it.id == id }
 }
@@ -334,6 +338,8 @@ data class GameSnapshot(
  * Единица записи: всё, что меняет одно действие банкира, — пишется одной транзакцией (`GameRepository.commit`).
  * Журнал и акты — только INSERT; игра и игроки — upsert.
  *
+ * @property baseSeq `lastSeq` снимка, по которому построено изменение (0 — новая игра); репозиторий отклоняет изменение
+ *   по устаревшему снимку (`STALE_SEQ`), даже если оно не пишет записей.
  * @property game новая версия строки игры (создание, статус, банкир, closedAt) или null — не менять.
  * @property players новые или переименованные игроки этой игры (upsert по id).
  * @property entries новые записи журнала, `seq` продолжает журнал без пропусков.
@@ -341,6 +347,7 @@ data class GameSnapshot(
  */
 data class GameChange(
     val gameId: GameId,
+    val baseSeq: Long,
     val game: Game? = null,
     val players: List<Player> = emptyList(),
     val entries: List<LedgerEntry> = emptyList(),
@@ -349,7 +356,8 @@ data class GameChange(
 
 /**
  * Применить изменение к снимку в памяти (тесты, цепочки команд, подготовка пакета передачи).
- * Бросает `IllegalArgumentException`, если `change.gameId` ≠ id снимка или `seq` не продолжает журнал.
+ * Бросает `IllegalArgumentException`, если `change.gameId` ≠ id снимка, `baseSeq` ≠ `lastSeq` или `seq` не продолжает
+ * журнал.
  * Для `game == null` и пустых списков возвращает равный снимок.
  */
 fun GameSnapshot.apply(change: GameChange): GameSnapshot
@@ -1291,13 +1299,16 @@ enum class ImportConflictReason {
     SECOND_ACTIVE_GAME,
     /** Входящий журнал не прошёл [LedgerValidator]. */
     INVALID_LEDGER,
-    /** Входящий журнал — префикс локального (или равен, а строки игры/игроков отличаются): локальная копия новее, пропустить. */
+    /** Входящий журнал — префикс локального (или равен, а строки игры/игроков отличаются): локальная копия новее, пропустить. Не ошибка: «пропущено, на телефоне новее». */
     LOCAL_NEWER,
+    /** Id игрока/записи/акта входящей игры занят строкой другой локальной игры — пропустить. */
+    ID_COLLISION,
 }
 
 object Imports {
     /** Чистое решение «что делать с входящей игрой». Никогда не удаляет и не меняет локальные записи журнала. */
-    fun plan(incoming: GameSnapshot, local: GameSnapshot?, activeGameId: GameId?): ImportPlan
+    /** @param foreignIds id строк входящей игры, которые в базе принадлежат другим играм (ищет репозиторий). */
+    fun plan(incoming: GameSnapshot, local: GameSnapshot?, activeGameId: GameId?, foreignIds: Set<Uuid> = emptySet()): ImportPlan
 }
 ```
 
@@ -1408,8 +1419,14 @@ interface BackupRepository {
     suspend fun importAll(text: String): ImportReport
 }
 
+sealed interface ImportFailure {
+    data class Unreadable(val reason: DecodeResult.Failure) : ImportFailure
+    data class StorageFailed(val cause: Throwable) : ImportFailure
+}
+
+/** `importAll` не бросает: сбой — в `failure`. `conflicts` — пропущенные игры (`LOCAL_NEWER` — не ошибка). */
 data class ImportReport(
-    val failure: DecodeResult.Failure?,
+    val failure: ImportFailure?,
     val added: Int,
     val extended: Int,
     val identical: Int,
@@ -1533,6 +1550,8 @@ sealed interface DecodeResult {
     /** Структура/значения не разбираются (неизвестный enum, битый UUID). */
     data class Malformed(val detail: String) : Failure
     data class InvalidLedger(val gameId: String, val problems: List<LedgerProblem>) : Failure
+    /** Пакет другого вида: файл передачи или шаблон открыт как резервная копия. */
+    data class WrongKind(val expected: String, val found: String) : Failure
 }
 
 object FeltbookCodec {
@@ -1699,3 +1718,14 @@ object Sha256 {
 | `Money.MAX_TOTAL = 1e12` | предел любой записи журнала для валидатора и кодека; `MAX_AMOUNT = 1e8` остаётся пределом ввода (фишки покупки, введённые оплата/выплата/прощение, чаевые, F) | итоговые записи (PAYMENT покупки целиком, расчёт при выходе, RAKE_PAID, INCOME_TAKEN, прощение всего долга) законно больше 1e8; 1e12 × 1e6 записей ≤ 1e18 < `Long.MAX_VALUE` |
 | Команды | запись > `MAX_TOTAL` не создаётся — `AmountTooLarge`; `forgiveDebt(amount = null)` прощает весь долг одной записью (до `MAX_TOTAL`) | журнал приложения всегда проходит свой валидатор и экспорт |
 | `DomainError.PlayerNotSeated(playerId)` | блокер котировки выхода для PLAYING-игрока без покупок (банкир-игрок без закупа) | QUESTIONS №15: выходить ему не с чем |
+
+### Ревью M2 (data-layer)
+
+| Где | Стало | Почему |
+| --- | --- | --- |
+| `GameChange.baseSeq`, `GameSnapshot.lastSeq` | обязательное поле: `lastSeq` снимка, по которому построено изменение; заполняют все команды, `Handovers`, `Imports` (Insert — 0, Extend — `local.lastSeq`); `apply` его проверяет | второе нажатие по устаревшему снимку отклоняется и для изменений без записей («Завершить игру», «Переоткрыть») |
+| `repository.CommitRejectedException(reason)` | перенесён из `:core:data`; `STALE_SEQ`, `SECOND_ACTIVE_GAME`, `UNKNOWN_GAME`, `FOREIGN_ROW`, `DUPLICATE_ID`; сообщение без имён и сумм | одна ошибка для ViewModel на всех платформах (ADR 0001) |
+| `ImportConflictReason.ID_COLLISION`, `Imports.plan(…, foreignIds)` | id строк входящей игры заняты другой локальной игрой — игра пропускается | upsert перенёс бы чужого игрока, вставка записи сорвала бы весь импорт |
+| `ImportReport.failure: ImportFailure?` | `Unreadable(DecodeResult.Failure)` / `StorageFailed(cause)`; `importAll` не бросает | сбой базы — в отчёт, а не исключение из экрана |
+| `DecodeResult.WrongKind(expected, found)`, `FeltbookCodec.kindOf`, `KIND_*` публичные | резервная копия отвечает `WrongKind("BACKUP", …)` на файл передачи или шаблон | понятный текст вместо «файл повреждён» |
+| `GameSnapshot.handovers` | порядок по `ledgerSeq` (стабильно), не по `at` | время двух телефонов может идти не по порядку, а `isPrefixOf` в импорте зависит от порядка |

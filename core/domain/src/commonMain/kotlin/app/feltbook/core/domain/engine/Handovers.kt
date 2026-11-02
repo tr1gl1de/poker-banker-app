@@ -93,7 +93,12 @@ object Handovers {
             ledgerSeq = entries.lastOrNull()?.seq ?: (snapshot.nextSeq - 1),
             at = stamp.at,
         )
-        val outgoingChange = GameChange(gameId = snapshot.game.id, entries = entries, handovers = listOf(handover))
+        val outgoingChange = GameChange(
+            gameId = snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
+            entries = entries,
+            handovers = listOf(handover),
+        )
         return PreparedHandover(
             act = act,
             handover = handover,
@@ -140,7 +145,7 @@ object Handovers {
         return when (val plan = Imports.plan(incoming.copy(game = game), local, activeGame?.id)) {
             is ImportPlan.Insert -> plan.change
             is ImportPlan.Extend -> plan.change
-            ImportPlan.Identical -> GameChange(game.id)
+            ImportPlan.Identical -> GameChange(game.id, baseSeq = local?.lastSeq ?: 0L)
             is ImportPlan.Conflict -> violation(DomainError.ImportConflict(plan.reason))
         }
     }

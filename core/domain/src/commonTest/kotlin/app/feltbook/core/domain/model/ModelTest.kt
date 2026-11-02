@@ -157,7 +157,7 @@ class GameSnapshotApplyTest {
     @Test
     fun `пустое изменение даёт равный снимок`() {
         val snapshot = emptySnapshot()
-        assertEquals(snapshot, snapshot.apply(GameChange(gameId(1))))
+        assertEquals(snapshot, snapshot.apply(GameChange(gameId(1), baseSeq = 0)))
         assertEquals(1L, snapshot.nextSeq)
         assertNull(snapshot.player(playerId(1)))
     }
@@ -170,6 +170,7 @@ class GameSnapshotApplyTest {
         val result = snapshot.apply(
             GameChange(
                 gameId = gameId(1),
+                baseSeq = 0,
                 game = closed,
                 players = listOf(anna),
                 entries = listOf(entry(1, EntryType.BUY_IN, anna.id, 1000)),
@@ -188,27 +189,39 @@ class GameSnapshotApplyTest {
         val bob = Player(playerId(2), gameId(1), "Борис", T0)
         val snapshot = emptySnapshot().copy(players = listOf(anna, bob))
         val renamed = anna.copy(name = "Аня")
-        val result = snapshot.apply(GameChange(gameId(1), players = listOf(renamed)))
+        val result = snapshot.apply(GameChange(gameId(1), baseSeq = 0, players = listOf(renamed)))
         assertEquals(listOf(renamed, bob), result.players)
     }
 
     @Test
-    fun `акты упорядочены по времени`() {
-        val late = Handover(HandoverId(Uuid.fromLongs(9, 1)), gameId(1), "А", "Б", 0, 0, 0, T0 + 5.minutes)
-        val early = Handover(HandoverId(Uuid.fromLongs(9, 2)), gameId(1), "Б", "В", 0, 0, 0, T0)
-        val result = emptySnapshot().apply(GameChange(gameId(1), handovers = listOf(late, early)))
-        assertEquals(listOf(early, late), result.handovers)
+    fun `акты упорядочены по ledgerSeq, а не по часам телефонов`() {
+        val second = Handover(HandoverId(Uuid.fromLongs(9, 1)), gameId(1), "Б", "В", 0, 0, 2, T0)
+        val first = Handover(HandoverId(Uuid.fromLongs(9, 2)), gameId(1), "А", "Б", 0, 0, 1, T0 + 5.minutes)
+        val sameSeq = Handover(HandoverId(Uuid.fromLongs(9, 3)), gameId(1), "В", "Г", 0, 0, 2, T0 - 5.minutes)
+        val result = emptySnapshot().apply(
+            GameChange(gameId(1), baseSeq = 0, handovers = listOf(second, first, sameSeq)),
+        )
+        assertEquals(listOf(first, second, sameSeq), result.handovers)
     }
 
     @Test
     fun `чужая игра или разрыв seq — ошибка`() {
         val snapshot = emptySnapshot()
-        assertFailsWith<IllegalArgumentException> { snapshot.apply(GameChange(gameId(2))) }
+        assertFailsWith<IllegalArgumentException> { snapshot.apply(GameChange(gameId(2), baseSeq = 0)) }
         assertFailsWith<IllegalArgumentException> {
-            snapshot.apply(GameChange(gameId(1), game = emptyGame(id = gameId(2))))
+            snapshot.apply(GameChange(gameId(1), baseSeq = 0, game = emptyGame(id = gameId(2))))
         }
         assertFailsWith<IllegalArgumentException> {
-            snapshot.apply(GameChange(gameId(1), entries = listOf(entry(2, EntryType.BUY_IN, anna.id, 1000))))
+            snapshot.apply(
+                GameChange(gameId(1), baseSeq = 0, entries = listOf(entry(2, EntryType.BUY_IN, anna.id, 1000))),
+            )
         }
+        // Изменение, построенное по устаревшему (или чужому) снимку.
+        assertFailsWith<IllegalArgumentException> { snapshot.apply(GameChange(gameId(1), baseSeq = 3)) }
+        val one = snapshot.apply(
+            GameChange(gameId(1), baseSeq = 0, entries = listOf(entry(1, EntryType.BUY_IN, anna.id, 1000))),
+        )
+        assertEquals(1L, one.lastSeq)
+        assertFailsWith<IllegalArgumentException> { one.apply(GameChange(gameId(1), baseSeq = 0)) }
     }
 }

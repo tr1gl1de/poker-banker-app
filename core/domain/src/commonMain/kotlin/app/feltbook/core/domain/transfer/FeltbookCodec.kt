@@ -44,6 +44,9 @@ sealed interface DecodeResult {
     data class Malformed(val detail: String) : Failure
 
     data class InvalidLedger(val gameId: String, val problems: List<LedgerProblem>) : Failure
+
+    /** Пакет другого вида (`kind`), чем ожидал вызывающий: например, файл передачи открыт как резервная копия. */
+    data class WrongKind(val expected: String, val found: String) : Failure
 }
 
 object FeltbookCodec {
@@ -55,14 +58,21 @@ object FeltbookCodec {
     val ACCEPTED_EXTENSIONS: Set<String> = setOf("feltbook", "pokerbank")
     const val MIME_TYPE: String = "application/json"
 
-    private const val KIND_HANDOVER = "HANDOVER"
-    private const val KIND_TEMPLATE = "TEMPLATE"
-    private const val KIND_BACKUP = "BACKUP"
+    const val KIND_HANDOVER: String = "HANDOVER"
+    const val KIND_TEMPLATE: String = "TEMPLATE"
+    const val KIND_BACKUP: String = "BACKUP"
 
     private val json = Json {
         encodeDefaults = true
         explicitNulls = true
         ignoreUnknownKeys = false
+    }
+
+    /** Значение поля `kind` конверта для пакета. */
+    fun kindOf(pkg: FeltbookPackage): String = when (pkg) {
+        is FeltbookPackage.HandoverPackage -> KIND_HANDOVER
+        is FeltbookPackage.TemplatePackage -> KIND_TEMPLATE
+        is FeltbookPackage.BackupPackage -> KIND_BACKUP
     }
 
     /** `Json { encodeDefaults = true; explicitNulls = true; ignoreUnknownKeys = false }` — без pretty print. */

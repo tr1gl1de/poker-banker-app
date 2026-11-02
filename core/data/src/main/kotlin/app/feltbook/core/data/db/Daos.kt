@@ -47,6 +47,10 @@ internal interface PlayerDao {
 
     @Query("SELECT * FROM players ORDER BY rowid")
     suspend fun all(): List<PlayerEntity>
+
+    /** Какие из `ids` уже принадлежат другой игре (upsert перенёс бы чужого игрока). */
+    @Query("SELECT id FROM players WHERE id IN (:ids) AND gameId != :gameId")
+    suspend fun idsInOtherGames(ids: List<Uuid>, gameId: Uuid): List<Uuid>
 }
 
 /** Журнал только дописывается: здесь нет и не должно быть `@Update`/`@Delete` (CLAUDE.md, правило 2). */
@@ -64,19 +68,25 @@ internal interface LedgerDao {
 
     @Query("SELECT MAX(seq) FROM ledger_entries WHERE gameId = :gameId")
     suspend fun lastSeq(gameId: Uuid): Long?
+
+    @Query("SELECT id FROM ledger_entries WHERE id IN (:ids) AND gameId != :gameId")
+    suspend fun idsInOtherGames(ids: List<Uuid>, gameId: Uuid): List<Uuid>
 }
 
-/** Акты передачи — только INSERT, как журнал. */
+/** Акты передачи — только INSERT, как журнал. Порядок — по `ledgerSeq` (часы телефонов могут расходиться). */
 @Dao
 internal interface HandoverDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(handovers: List<HandoverEntity>)
 
-    @Query("SELECT * FROM handovers WHERE gameId = :gameId ORDER BY at, rowid")
+    @Query("SELECT * FROM handovers WHERE gameId = :gameId ORDER BY ledgerSeq, rowid")
     suspend fun byGame(gameId: Uuid): List<HandoverEntity>
 
-    @Query("SELECT * FROM handovers ORDER BY at, rowid")
+    @Query("SELECT * FROM handovers ORDER BY gameId, ledgerSeq, rowid")
     suspend fun all(): List<HandoverEntity>
+
+    @Query("SELECT id FROM handovers WHERE id IN (:ids) AND gameId != :gameId")
+    suspend fun idsInOtherGames(ids: List<Uuid>, gameId: Uuid): List<Uuid>
 }
 
 @Dao

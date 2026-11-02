@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "76cacdfa2adaeebdef59a5f09c918090",
+    "identityHash": "ce2354704bdfe1638573b3f5072990c6",
     "entities": [
       {
         "tableName": "games",
@@ -296,15 +296,6 @@
             "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_ledger_entries_gameId_seq` ON `${TABLE_NAME}` (`gameId`, `seq`)"
           },
           {
-            "name": "index_ledger_entries_gameId",
-            "unique": false,
-            "columnNames": [
-              "gameId"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_ledger_entries_gameId` ON `${TABLE_NAME}` (`gameId`)"
-          },
-          {
             "name": "index_ledger_entries_playerId",
             "unique": false,
             "columnNames": [
@@ -398,22 +389,14 @@
         },
         "indices": [
           {
-            "name": "index_handovers_gameId",
+            "name": "index_handovers_gameId_ledgerSeq",
             "unique": false,
             "columnNames": [
-              "gameId"
+              "gameId",
+              "ledgerSeq"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_handovers_gameId` ON `${TABLE_NAME}` (`gameId`)"
-          },
-          {
-            "name": "index_handovers_at",
-            "unique": false,
-            "columnNames": [
-              "at"
-            ],
-            "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_handovers_at` ON `${TABLE_NAME}` (`at`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_handovers_gameId_ledgerSeq` ON `${TABLE_NAME}` (`gameId`, `ledgerSeq`)"
           }
         ],
         "foreignKeys": [
@@ -473,7 +456,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '76cacdfa2adaeebdef59a5f09c918090')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ce2354704bdfe1638573b3f5072990c6')"
     ]
   }
 }

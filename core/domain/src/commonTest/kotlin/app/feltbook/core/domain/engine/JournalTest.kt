@@ -105,7 +105,7 @@ class JournalTest {
         val andrey = table.id("Андрей")
         val handover =
             Handover(HandoverId(Uuid.fromLongs(7, 7)), table.snapshot.game.id, "Олег", "Влад", 0, 0, 3, table.clock.now)
-        table.apply(GameChange(table.snapshot.game.id, handovers = listOf(handover)))
+        table.apply(GameChange(table.snapshot.game.id, baseSeq = table.snapshot.lastSeq, handovers = listOf(handover)))
         table.cashOut("Борис", 1_000, Tip(100, TipTarget.ToPlayer(andrey)), SettlementChoice.None)
         val items = Journal.items(table.snapshot)
         assertEquals(listOf(false, false, true, false), items.map { it is JournalItem.HandoverItem })
@@ -113,7 +113,7 @@ class JournalTest {
         val forAndrey = Journal.forPlayer(table.snapshot, andrey)
         assertEquals(listOf(OperationKind.CASH_OUT, OperationKind.FIRST_BUY_IN), forAndrey.map { it.kind })
         val late = handover.copy(id = HandoverId(Uuid.fromLongs(7, 8)), ledgerSeq = 100)
-        table.apply(GameChange(table.snapshot.game.id, handovers = listOf(late)))
+        table.apply(GameChange(table.snapshot.game.id, baseSeq = table.snapshot.lastSeq, handovers = listOf(late)))
         assertTrue(Journal.items(table.snapshot).first() is JournalItem.HandoverItem)
     }
 }

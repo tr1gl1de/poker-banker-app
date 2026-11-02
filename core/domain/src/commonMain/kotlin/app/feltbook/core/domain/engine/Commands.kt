@@ -59,7 +59,7 @@ object Commands {
             bankerPlayerId = banker?.id,
             rules = input.rules,
         )
-        return GameChange(gameId = gameId, game = game, players = listOfNotNull(banker))
+        return GameChange(gameId = gameId, baseSeq = 0L, game = game, players = listOfNotNull(banker))
     }
 
     /**
@@ -80,6 +80,7 @@ object Commands {
         val seatsBanker = bindsBanker(snapshot, PlayerNames.normalize(name))
         return GameChange(
             gameId = snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
             game = if (seatsBanker) snapshot.game.copy(bankerPlayerId = playerId) else null,
             players = listOfNotNull(player),
             entries = purchase(snapshot, playerId, quote, payment, stamp),
@@ -99,7 +100,11 @@ object Commands {
     ): GameChange {
         val quote = Pricing.quoteBuyIn(snapshot, playerId, chips)
         checkPurchase(snapshot, quote, payment)
-        return GameChange(gameId = snapshot.game.id, entries = purchase(snapshot, playerId, quote, payment, stamp))
+        return GameChange(
+            gameId = snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
+            entries = purchase(snapshot, playerId, quote, payment, stamp),
+        )
     }
 
     /**
@@ -167,7 +172,7 @@ object Commands {
             val type = if (quote.balance > 0) EntryType.PAYOUT else EntryType.PAYMENT
             writer.add(writer.operation(), type, playerId, settled)
         }
-        return GameChange(gameId = snapshot.game.id, entries = writer.entries)
+        return GameChange(gameId = snapshot.game.id, baseSeq = snapshot.lastSeq, entries = writer.entries)
     }
 
     /**
@@ -194,7 +199,7 @@ object Commands {
                     note = note,
                 )
             }
-        return GameChange(gameId = snapshot.game.id, entries = writer.entries)
+        return GameChange(gameId = snapshot.game.id, baseSeq = snapshot.lastSeq, entries = writer.entries)
     }
 
     /**
@@ -252,6 +257,7 @@ object Commands {
         }
         return GameChange(
             gameId = snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
             game = snapshot.game.copy(status = GameStatus.CLOSED, closedAt = stamp.at),
             entries = writer.entries,
         )
@@ -269,7 +275,7 @@ object Commands {
             violation(DomainError.AnotherGameActive(activeGame.id))
         }
         val game = snapshot.game.copy(status = GameStatus.RUNNING, closedAt = null, editedAfterClose = true)
-        return GameChange(gameId = snapshot.game.id, game = game)
+        return GameChange(gameId = snapshot.game.id, baseSeq = snapshot.lastSeq, game = game)
     }
 
     /** «Переименовать»: upsert Player с новым именем; блокеры имени как у новой игры. Журнал не меняется. */
@@ -281,7 +287,11 @@ object Commands {
         snapshot.players
             .firstOrNull { it.id != playerId && PlayerNames.normalize(it.name) == normalized }
             ?.let { violation(DomainError.NameTaken(it.id)) }
-        return GameChange(gameId = snapshot.game.id, players = listOf(player.copy(name = normalized)))
+        return GameChange(
+            gameId = snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
+            players = listOf(player.copy(name = normalized)),
+        )
     }
 
     private fun checkPurchase(snapshot: GameSnapshot, quote: BuyInQuote, payment: BuyInPayment) {
@@ -326,12 +336,12 @@ object Commands {
     ): GameChange {
         val writer = EntryWriter(snapshot, stamp)
         writer.add(writer.operation(), type, playerId, amount, bankerName = bankerName)
-        return GameChange(gameId = snapshot.game.id, entries = writer.entries)
+        return GameChange(gameId = snapshot.game.id, baseSeq = snapshot.lastSeq, entries = writer.entries)
     }
 
     private fun transition(snapshot: GameSnapshot, from: GameStatus, to: GameStatus): GameChange {
         requireStatus(snapshot, setOf(from))
-        return GameChange(gameId = snapshot.game.id, game = snapshot.game.copy(status = to))
+        return GameChange(gameId = snapshot.game.id, baseSeq = snapshot.lastSeq, game = snapshot.game.copy(status = to))
     }
 
     private val SETTLE_STATUSES = setOf(GameStatus.RUNNING, GameStatus.SETTLING, GameStatus.CLOSED)

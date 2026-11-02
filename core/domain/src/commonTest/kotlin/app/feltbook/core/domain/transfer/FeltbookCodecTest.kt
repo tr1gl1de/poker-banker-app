@@ -56,6 +56,14 @@ class FeltbookCodecTest {
     private fun payloadOf(text: String): String = json.decodeFromString(EnvelopeDto.serializer(), text).payload
 
     @Test
+    fun `вид пакета — значение поля kind`() {
+        assertEquals(FeltbookCodec.KIND_HANDOVER, FeltbookCodec.kindOf(handoverPackage()))
+        assertEquals(FeltbookCodec.KIND_BACKUP, FeltbookCodec.kindOf(backupPackage()))
+        val template = FeltbookPackage.TemplatePackage(GameTemplate("Олег", GameRules.DEFAULT, listOf("Влад")))
+        assertEquals("TEMPLATE", FeltbookCodec.kindOf(template))
+    }
+
+    @Test
     fun `передача — encode, decode дают равный снимок и акт`() {
         val pkg = handoverPackage()
         val text = FeltbookCodec.encode(pkg, T0)

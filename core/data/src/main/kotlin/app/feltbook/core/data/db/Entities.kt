@@ -79,8 +79,8 @@ internal data class PlayerEntity(@PrimaryKey val id: Uuid, val gameId: Uuid, val
         ),
     ],
     indices = [
+        // Покрывает и поиск по gameId (ведущая колонка), отдельный индекс gameId не нужен.
         Index(value = ["gameId", "seq"], unique = true),
-        Index("gameId"),
         Index("playerId"),
         Index("createdAt"),
     ],
@@ -111,7 +111,7 @@ internal data class LedgerEntryEntity(
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("gameId"), Index("at")],
+    indices = [Index(value = ["gameId", "ledgerSeq"])],
 )
 internal data class HandoverEntity(
     @PrimaryKey val id: Uuid,

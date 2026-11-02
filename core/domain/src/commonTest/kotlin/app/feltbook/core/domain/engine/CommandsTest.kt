@@ -197,7 +197,13 @@ class PurchaseCommandsTest {
         val reversals = buy.mapIndexed { i, e ->
             entry(table.snapshot.nextSeq + i, EntryType.REVERSAL, id, e.amount, op = 200, reverses = e.id)
         }
-        table.apply(app.feltbook.core.domain.model.GameChange(table.snapshot.game.id, entries = reversals))
+        table.apply(
+            app.feltbook.core.domain.model.GameChange(
+                table.snapshot.game.id,
+                baseSeq = table.snapshot.lastSeq,
+                entries = reversals,
+            ),
+        )
         assertTrue(table.state.player(id)!!.isVoid)
         val change = Commands.addPlayer(table.snapshot, "Андрей", 2_000, BuyInPayment.DEBT, table.clock.stamp())
         assertTrue(change.players.isEmpty())
@@ -220,6 +226,7 @@ class PurchaseCommandsTest {
     private fun changeOf(snapshot: GameSnapshot, vararg entries: app.feltbook.core.domain.model.LedgerEntry) =
         app.feltbook.core.domain.model.GameChange(
             snapshot.game.id,
+            baseSeq = snapshot.lastSeq,
             entries = entries.map {
                 it.copy(gameId = snapshot.game.id)
             },
