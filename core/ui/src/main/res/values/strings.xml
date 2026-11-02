@@ -87,6 +87,7 @@
     <string name="scoreboard_rake">Рейк заведению</string>
     <string name="scoreboard_banker_income">Банкиру</string>
     <string name="scoreboard_banker_owes">банкир должен %1$s</string>
+    <string name="scoreboard_banker_owes_label">банкир должен</string>
 
     <!-- §11.2 Plurals -->
     <plurals name="players_count">

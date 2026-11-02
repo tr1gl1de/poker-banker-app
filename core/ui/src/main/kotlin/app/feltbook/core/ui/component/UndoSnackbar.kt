@@ -19,9 +19,11 @@ import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
@@ -31,11 +33,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
-/** Snackbar «Отменить» живёт 5 с (ТЗ §5.1). */
+/** Snackbar «Отменить» живёт 5 с (ТЗ §5.1); TalkBack-настройка «Время на действие» может увеличить. */
 const val UNDO_SNACKBAR_MILLIS: Long = 5_000L
 
 private class FeltbookSnackbarVisuals(override val message: String, override val actionLabel: String?) :
@@ -45,33 +45,39 @@ private class FeltbookSnackbarVisuals(override val message: String, override val
 }
 
 /**
- * Показывает snackbar «Отменить» на [durationMillis] (5 с). Новая операция заменяет старую: текущий snackbar
- * закрывается (старая операция остаётся отменяемой через журнал). [actionLabel] = `null` — snackbar без действия
- * (подсказки пасхалки). Возвращает [SnackbarResult.ActionPerformed], если нажали действие.
+ * Показывает snackbar «Отменить». Новая операция заменяет старую: текущий snackbar закрывается (старая
+ * операция остаётся отменяемой через журнал). Время показа (5 с с поправкой Accessibility) отсчитывает
+ * [FeltbookSnackbarHost]. [actionLabel] = `null` — snackbar без действия (подсказки пасхалки).
+ * Возвращает [SnackbarResult.ActionPerformed], если нажали действие.
  */
-suspend fun SnackbarHostState.showUndoSnackbar(
-    message: String,
-    actionLabel: String?,
-    durationMillis: Long = UNDO_SNACKBAR_MILLIS,
-): SnackbarResult = coroutineScope {
+suspend fun SnackbarHostState.showUndoSnackbar(message: String, actionLabel: String?): SnackbarResult {
     currentSnackbarData?.dismiss()
-    val visuals = FeltbookSnackbarVisuals(message, actionLabel)
-    val timeout =
-        launch {
-            delay(durationMillis)
-            currentSnackbarData?.takeIf { it.visuals === visuals }?.dismiss()
-        }
-    try {
-        showSnackbar(visuals)
-    } finally {
-        timeout.cancel()
-    }
+    return showSnackbar(FeltbookSnackbarVisuals(message, actionLabel))
 }
 
-/** Хост snackbar в стиле «Сукна»; размещать на 16 dp над FAB/нижней панелью. */
+/**
+ * Хост snackbar в стиле «Сукна»; размещать на 16 dp над FAB/нижней панелью. Snackbar живёт [durationMillis]
+ * (5 с), увеличенные по настройке «Время на действие» (`calculateRecommendedTimeoutMillis`).
+ */
 @Composable
-fun FeltbookSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
+fun FeltbookSnackbarHost(
+    hostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
+    durationMillis: Long = UNDO_SNACKBAR_MILLIS,
+) {
+    val accessibility = LocalAccessibilityManager.current
     SnackbarHost(hostState = hostState, modifier = modifier) { data: SnackbarData ->
+        val timeout =
+            accessibility?.calculateRecommendedTimeoutMillis(
+                originalTimeoutMillis = durationMillis,
+                containsIcons = false,
+                containsText = true,
+                containsControls = data.visuals.actionLabel != null,
+            ) ?: durationMillis
+        LaunchedEffect(data) {
+            delay(timeout)
+            data.dismiss()
+        }
         UndoSnackbar(
             message = data.visuals.message,
             actionLabel = data.visuals.actionLabel,

@@ -28,6 +28,10 @@ data class FeltbookColors(
     val feltLightMid: Color,
     /** Конец градиента [feltLight]. */
     val feltLightEnd: Color,
+    /** Текст на сукне «стола» (табло, карточка активной игры): в светлой теме стол остаётся тёмно-зелёным. */
+    val onFeltTable: Color,
+    /** Подписи на сукне «стола». */
+    val onFeltTableSoft: Color,
     /** Борт овального стола. */
     val rail: Color,
     /** Главные кнопки, FAB, активные состояния, обводки. */
@@ -219,6 +223,8 @@ private data class Palette(
     val feltLight: Color,
     val feltLightMid: Color,
     val feltLightEnd: Color,
+    val onFeltTable: Color,
+    val onFeltTableSoft: Color,
     val rail: Color,
     val brass: Color,
     val brassGradientEnd: Color,
@@ -267,6 +273,8 @@ private fun Palette.toColors(): FeltbookColors = FeltbookColors(
     feltLight = feltLight,
     feltLightMid = feltLightMid,
     feltLightEnd = feltLightEnd,
+    onFeltTable = onFeltTable,
+    onFeltTableSoft = onFeltTableSoft,
     rail = rail,
     brass = brass,
     brassGradientEnd = brassGradientEnd,
@@ -356,6 +364,8 @@ val FeltbookDarkColors: FeltbookColors =
         feltLight = Color(0xFF1B5A43),
         feltLightMid = Color(0xFF12432F),
         feltLightEnd = Color(0xFF0D3426),
+        onFeltTable = Color(0xFFEDE6D3),
+        onFeltTableSoft = Color(0xFFCFE0D6),
         rail = Color(0xFF3A2A18),
         brass = Color(0xFFC9A35B),
         brassGradientEnd = Color(0xFFD9B66C),
@@ -391,6 +401,7 @@ val FeltbookDarkColors: FeltbookColors =
 /**
  * Светлая тема «Бумага и латунь». Из DESIGN.md заданы фон `#F6F2E8`, акцент `#0F4A37`, латунь `#8C6A2A`;
  * остальное — предложения m3-ui-spec §1.2 (светлого макета нет), альфа-токены — та же альфа от светлых баз.
+ * Контраст текста на латуни ≥ 4,5: onBrass на brass 4,9, на верхе градиента 4,6, на дорожке hold-кнопки 8,3.
  */
 val FeltbookLightColors: FeltbookColors =
     Palette(
@@ -402,14 +413,16 @@ val FeltbookLightColors: FeltbookColors =
         feltLight = Color(0xFF0F4A37),
         feltLightMid = Color(0xFF0D4231),
         feltLightEnd = Color(0xFF0B3A2B),
+        onFeltTable = Color(0xFFF3EDDC),
+        onFeltTableSoft = Color(0xFFCFE0D6),
         rail = Color(0xFF8C6A2A),
         brass = Color(0xFF8C6A2A),
-        brassGradientEnd = Color(0xFFA27D36),
+        brassGradientEnd = Color(0xFF916E2C),
         brassLight = Color(0xFF8C6A2A),
         brassBright = Color(0xFF6E5220),
         brassMuted = Color(0xFF6E5A33),
         onBrass = Color(0xFFFFFDF8),
-        onBrassSecondary = Color(0xFFF3EDDC),
+        onBrassSecondary = Color(0xFFFFF8E8),
         accent = Color(0xFF0F4A37),
         onAccent = Color(0xFFF6F2E8),
         ink = Color(0xFF1B241F),
@@ -427,7 +440,7 @@ val FeltbookLightColors: FeltbookColors =
         suitRed = Color(0xFFB3261E),
         suitBlack = Color(0xFF1A1A1A),
         cardInactive = Color(0xFFD9D2C0),
-        holdTrack = Color(0xFFC9B48A),
+        holdTrack = Color(0xFF5E4A22),
         dialog = Color(0xFFFFFDF8),
         scrim = Color(0xFF1B241F).copy(alpha = 0.32f),
         payPanelBase = Color(0xFF1E7A4E),

@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -31,6 +34,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -80,6 +85,11 @@ fun FeltbookSheet(
     val colors = FeltbookTheme.colors
     val shape = FeltbookTheme.shapes.sheet
     val currentOnDismiss by rememberUpdatedState(onDismiss)
+    // Не выше «экран − statusBars − 56 dp»: при шрифте 200 % содержимое прокручивается, а не уходит под статус-бар.
+    val density = LocalDensity.current
+    val windowHeight = LocalWindowInfo.current.containerSize.height
+    val statusBars = WindowInsets.statusBars.getTop(density)
+    val maxSheetHeight = with(density) { (windowHeight - statusBars).toDp() } - FeltbookDimens.sheetTopGap
 
     ModalBottomSheet(
         onDismissRequest = { currentOnDismiss() },
@@ -97,6 +107,7 @@ fun FeltbookSheet(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .heightIn(max = maxSheetHeight.coerceAtLeast(FeltbookDimens.minTouchTarget))
                     .drawWithCache {
                         val outline = Path().apply {
                             addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache))
@@ -117,6 +128,7 @@ fun FeltbookSheet(
                         }
                     }.verticalScroll(rememberScrollState())
                     .navigationBarsPadding()
+                    .imePadding()
                     .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(space = contentSpacing),
         ) {

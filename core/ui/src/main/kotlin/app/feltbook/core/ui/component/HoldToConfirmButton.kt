@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +48,7 @@ import app.feltbook.core.ui.theme.FeltbookGradients
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.LocalConfirmHaptics
 import app.feltbook.core.ui.theme.feltBackground
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /** Время удержания до подтверждения (ТЗ §5.1). */
@@ -86,16 +86,24 @@ fun HoldToConfirmButton(
     val type = FeltbookTheme.typography
     val shape = if (size == HoldButtonSize.H56) FeltbookTheme.shapes.card else FeltbookTheme.shapes.hero
     val haptic = LocalHapticFeedback.current
-    val haptics = LocalConfirmHaptics.current
+    val haptics by rememberUpdatedState(LocalConfirmHaptics.current)
     val currentOnConfirm by rememberUpdatedState(onConfirm)
+    val currentEnabled by rememberUpdatedState(enabled)
     val progress = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
     val confirmLabel = stringResource(R.string.common_confirm_action)
-    val gradient = FeltbookGradients.brassButton(colors)
-    val confirm = {
-        if (haptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        currentOnConfirm()
-    }
+    val gradient = remember(colors) { FeltbookGradients.brassButton(colors) }
+    // Подтверждает только включённая кнопка: удержание или действие TalkBack могли начаться до `enabled = false`.
+    val confirm: () -> Unit =
+        remember(haptic) {
+            {
+                if (currentEnabled) {
+                    if (haptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    currentOnConfirm()
+                }
+            }
+        }
+    // Смена доступности (после подтверждения экран ставит enabled = false) сбрасывает полосу.
+    LaunchedEffect(enabled) { progress.snapTo(0f) }
 
     Box(
         modifier =
@@ -130,22 +138,30 @@ fun HoldToConfirmButton(
                     }
                 }.pointerInput(enabled) {
                     if (!enabled) return@pointerInput
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        val fill =
-                            scope.launch {
-                                val remaining = ((1f - progress.value) * HOLD_TO_CONFIRM_MILLIS).toInt()
-                                progress.animateTo(1f, tween(durationMillis = remaining, easing = LinearEasing))
-                                confirm()
-                            }
-                        waitForUpOrCancellation()
-                        val completed = fill.isCompleted && !fill.isCancelled
-                        fill.cancel(CancellationException("released"))
-                        scope.launch {
-                            if (completed) {
-                                progress.snapTo(0f)
-                            } else {
-                                progress.animateTo(0f, tween(durationMillis = HOLD_RELEASE_MILLIS))
+                    // Заполнение живёт в области жеста: при смене enabled pointerInput перезапускается
+                    // и незавершённое удержание отменяется вместе с ним.
+                    coroutineScope {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            var completed = false
+                            val fill =
+                                launch {
+                                    val remaining = ((1f - progress.value) * HOLD_TO_CONFIRM_MILLIS).toInt()
+                                    progress.animateTo(1f, tween(durationMillis = remaining, easing = LinearEasing))
+                                    completed = true
+                                    confirm()
+                                }
+                            try {
+                                waitForUpOrCancellation()
+                            } finally {
+                                fill.cancel()
+                                launch {
+                                    if (completed) {
+                                        progress.snapTo(0f)
+                                    } else {
+                                        progress.animateTo(0f, tween(durationMillis = HOLD_RELEASE_MILLIS))
+                                    }
+                                }
                             }
                         }
                     }

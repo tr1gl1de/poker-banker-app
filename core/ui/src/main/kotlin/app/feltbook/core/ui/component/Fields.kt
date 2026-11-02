@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -26,6 +28,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
@@ -78,7 +81,7 @@ fun FeltTextField(
             keyboardOptions =
                 KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = imeAction),
             keyboardActions = KeyboardActions(onAny = { onImeAction() }),
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { if (error != null) error(error) },
             decorationBox = { inner ->
                 Column(
                     modifier =
@@ -168,14 +171,16 @@ fun ValueBox(
     Row(
         modifier =
             modifier
-                .width(width = 96.dp)
+                .minimumInteractiveComponentSize()
+                .width(width = FeltbookDimens.valueBoxWidth)
+                .heightIn(min = FeltbookDimens.valueBoxHeight)
                 .clip(FeltbookTheme.shapes.key)
                 .background(color = colors.card)
                 .clickable(role = Role.Button, onClick = onClick)
                 .semantics {
                     this.contentDescription = contentDescription
                     if (selectedLabel != null) stateDescription = selectedLabel
-                }.padding(vertical = 11.dp),
+                }.padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(space = 4.dp, alignment = Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {

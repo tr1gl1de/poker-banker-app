@@ -48,6 +48,16 @@ class ComponentsScreenshotTest {
     fun scoreboardFontScale200() = capture(fontScale = 2f) { Scoreboard() }
 
     @Test
+    fun scoreboardLight() = capture(darkTheme = false) { Scoreboard() }
+
+    @Test
+    fun holdButtonLight() = capture(darkTheme = false) {
+        HoldToConfirmButton(title = "Выплатить 353 ₽", onConfirm = {})
+        HoldToConfirmButton(title = "Закрыть игру", onConfirm = {}, size = HoldButtonSize.H56, enabled = false)
+        BrassButton(text = "Начать игру", onClick = {}, modifier = Modifier.fillMaxWidth())
+    }
+
+    @Test
     fun keypad() = capture { Keypad() }
 
     @Test
@@ -135,11 +145,16 @@ class ComponentsScreenshotTest {
         FeltbookBottomBar(items = PreviewBottomBarItems, selectedIndex = 2, onItemClick = {})
     }
 
-    private fun capture(fontScale: Float = 1f, padded: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    private fun capture(
+        fontScale: Float = 1f,
+        padded: Boolean = true,
+        darkTheme: Boolean = true,
+        content: @Composable ColumnScope.() -> Unit,
+    ) {
         captureRoboImage {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
-                FeltbookTheme(darkTheme = true) {
+                FeltbookTheme(darkTheme = darkTheme) {
                     Column(
                         modifier =
                             Modifier
@@ -181,19 +196,11 @@ private fun AmountRows() {
             },
         ) {
             Column {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(space = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = name,
-                        style = type.title,
-                        color = colors.ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(weight = 1f, fill = false),
-                    )
-                    if (index == 0) RebuyBadge(count = 2)
+                NameWithBadges(name = name) {
+                    if (index == 0) {
+                        BankerBadge()
+                        RebuyBadge(count = 2)
+                    }
                 }
                 Text(
                     text = meta,

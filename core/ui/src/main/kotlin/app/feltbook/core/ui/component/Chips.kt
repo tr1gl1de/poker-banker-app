@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.feltbook.core.ui.theme.FeltbookDimens
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 
@@ -32,13 +32,13 @@ fun FeltFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 36.dp,
+    height: Dp = FeltbookDimens.filterChipHeight,
     brightSelected: Boolean = false,
     role: Role = Role.RadioButton,
 ) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = FeltbookTheme.shapes.pill
     Box(
         modifier =
             modifier
@@ -79,7 +79,7 @@ fun SmallToggle(text: String, selected: Boolean, onClick: () -> Unit, modifier: 
         modifier =
             modifier
                 .minimumInteractiveComponentSize()
-                .heightIn(min = 32.dp)
+                .heightIn(min = FeltbookDimens.smallToggleHeight)
                 .clip(shape)
                 .then(if (selected) Modifier.background(color = colors.feltDeep) else Modifier)
                 .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
@@ -98,12 +98,12 @@ fun SmallToggle(text: String, selected: Boolean, onClick: () -> Unit, modifier: 
 @Composable
 fun DropdownChip(text: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = FeltbookTheme.colors
-    val shape = RoundedCornerShape(percent = 50)
+    val shape = FeltbookTheme.shapes.pill
     Box(
         modifier =
             modifier
                 .minimumInteractiveComponentSize()
-                .heightIn(min = 36.dp)
+                .heightIn(min = FeltbookDimens.dropdownChipHeight)
                 .clip(shape)
                 .border(width = 1.dp, color = colors.brassBorderStrong, shape = shape)
                 .clickable(role = Role.DropdownList, onClick = onClick)

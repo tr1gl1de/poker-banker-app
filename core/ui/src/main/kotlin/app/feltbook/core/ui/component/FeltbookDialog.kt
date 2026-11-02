@@ -13,19 +13,24 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
@@ -43,7 +48,7 @@ private val DialogMaxWidth = 560.dp
 /**
  * Диалог «с глаголом» (m3-ui-spec §4.14), прижат к низу (зона большого пальца) над нижней панелью:
  * [bottomInset] = 16 dp без панели, 96 dp над панелью; `navigationBars` добавляются сами.
- * Безопасная кнопка ([safeLabel]) — по умолчанию и первая для TalkBack; «назад» и тап мимо = [onSafe].
+ * Безопасная кнопка ([safeLabel]) — по умолчанию: получает фокус и первая для TalkBack; «назад» и тап мимо = [onSafe].
  * [destructive] — глагол красным (`owe`), иначе латунью. [content] — опц. поле ввода («УДАЛИТЬ»).
  */
 @Composable
@@ -67,18 +72,21 @@ fun FeltbookDialog(
         // Своё затемнение c.scrim вместо системного dim окна.
         val window = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect { window?.setDimAmount(0f) }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .background(color = FeltbookTheme.colors.scrim)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onSafe,
-                    ),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
+        val safeFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { runCatching { safeFocus.requestFocus() } }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+            // Затемнение: тап мимо = безопасная кнопка; для TalkBack его нет («назад» = безопасная кнопка).
+            Box(
+                modifier =
+                    Modifier
+                        .matchParentSize()
+                        .background(color = FeltbookTheme.colors.scrim)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onSafe,
+                        ).clearAndSetSemantics {},
+            )
             FeltbookDialogCard(
                 title = title,
                 body = body,
@@ -89,9 +97,11 @@ fun FeltbookDialog(
                 destructive = destructive,
                 confirmEnabled = confirmEnabled,
                 content = content,
+                safeFocusRequester = safeFocus,
                 modifier =
                     modifier
                         .navigationBarsPadding()
+                        .imePadding()
                         .padding(start = 16.dp, end = 16.dp, bottom = bottomInset)
                         .widthIn(max = DialogMaxWidth)
                         // Тап по карточке не закрывает диалог (без семантики клика).
@@ -115,6 +125,7 @@ fun FeltbookDialogCard(
     destructive: Boolean = true,
     confirmEnabled: Boolean = true,
     content: (@Composable ColumnScope.() -> Unit)? = null,
+    safeFocusRequester: FocusRequester? = null,
 ) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
@@ -139,7 +150,11 @@ fun FeltbookDialogCard(
             horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.End),
             verticalArrangement = Arrangement.spacedBy(space = 4.dp),
         ) {
-            SafeDialogButton(text = safeLabel, onClick = onSafe)
+            SafeDialogButton(
+                text = safeLabel,
+                onClick = onSafe,
+                modifier = if (safeFocusRequester != null) Modifier.focusRequester(safeFocusRequester) else Modifier,
+            )
             DialogTextButton(
                 text = confirmLabel,
                 onClick = onConfirm,

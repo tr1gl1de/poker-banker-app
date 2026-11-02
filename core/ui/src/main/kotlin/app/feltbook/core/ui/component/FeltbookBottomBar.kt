@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -125,7 +126,13 @@ private fun BottomBarEntry(
             contentAlignment = Alignment.Center,
         ) {
             when (val icon = item.icon) {
-                is BottomBarIcon.Glyph -> Text(text = icon.text, style = type.suitTab, color = iconColor)
+                is BottomBarIcon.Glyph ->
+                    Text(
+                        text = icon.text,
+                        style = type.suitTab,
+                        color = iconColor,
+                        modifier = Modifier.clearAndSetSemantics {},
+                    )
 
                 is BottomBarIcon.Vector ->
                     Icon(

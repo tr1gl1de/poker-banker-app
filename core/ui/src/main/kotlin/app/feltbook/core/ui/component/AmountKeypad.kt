@@ -111,7 +111,6 @@ private fun RowScope.KeypadButton(key: KeypadKey, onKey: (KeypadKey) -> Unit, en
             base.combinedClickable(
                 enabled = enabled,
                 role = Role.Button,
-                onClickLabel = stringResource(R.string.keypad_delete),
                 onLongClickLabel = stringResource(R.string.keypad_clear),
                 onLongClick = { onKey(KeypadKey.Clear) },
                 onClick = { onKey(KeypadKey.Backspace) },

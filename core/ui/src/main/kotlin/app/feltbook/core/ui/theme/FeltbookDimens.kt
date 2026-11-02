@@ -64,7 +64,22 @@ object FeltbookDimens {
     val fabHeight = 56.dp
     val fabAboveBar = 20.dp
 
+    // Чипы и мелкие кнопки (визуальная высота; цель касания — 48)
+    val deleteChipHeight = 40.dp
+    val filterChipHeight = 36.dp
+    val historyChipHeight = 34.dp
+    val smallToggleHeight = 32.dp
+    val dropdownChipHeight = 36.dp
+
+    // Поля и панели
+    val valueBoxWidth = 96.dp
+    val valueBoxHeight = 46.dp
+    val resultIconPlate = 44.dp
+
     // Шторка
+
+    /** Шторка не выше «экран − statusBars − 56 dp». */
+    val sheetTopGap = 56.dp
     val dragHandleWidth = 36.dp
     val dragHandleHeight = 4.dp
 

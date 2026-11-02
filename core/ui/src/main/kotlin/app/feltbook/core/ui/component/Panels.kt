@@ -26,9 +26,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -219,7 +221,9 @@ fun ResultPanel(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier.size(size = 44.dp).background(color = iconBackground, shape = CircleShape),
+            modifier = Modifier.size(
+                size = FeltbookDimens.resultIconPlate,
+            ).background(color = iconBackground, shape = CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -283,8 +287,10 @@ fun InfoBanner(text: String, variant: BannerVariant, modifier: Modifier = Modifi
                 .clip(shape)
                 .background(color = background)
                 .border(width = 1.dp, color = border, shape = shape)
-                .semantics(mergeDescendants = true) {}
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .semantics(mergeDescendants = true) {
+                    // Предупреждения появляются по ходу ввода — TalkBack озвучивает их сам.
+                    if (variant != BannerVariant.Ok) liveRegion = LiveRegionMode.Polite
+                }.padding(horizontal = 12.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(space = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

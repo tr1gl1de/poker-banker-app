@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Icon
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -434,8 +433,8 @@ fun DeleteActionChip(text: String, onClick: () -> Unit, modifier: Modifier = Mod
         modifier =
             modifier
                 .minimumInteractiveComponentSize()
-                .heightIn(min = 40.dp)
-                .clip(RoundedCornerShape(size = 20.dp))
+                .heightIn(min = FeltbookDimens.deleteChipHeight)
+                .clip(FeltbookTheme.shapes.pill)
                 .background(color = colors.oweBackgroundStrong)
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 14.dp),

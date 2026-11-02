@@ -3,13 +3,18 @@ package app.feltbook.core.ui.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.feltbook.core.ui.R
@@ -47,6 +52,31 @@ fun BankerBadge(modifier: Modifier = Modifier) {
                 .background(color = colors.brass, shape = FeltbookTheme.shapes.badge)
                 .padding(horizontal = 6.dp, vertical = 1.dp),
     )
+}
+
+/**
+ * Имя игрока со значками: имя — в одну строку с многоточием, значки идут за ним и **уступают место**:
+ * если не помещаются, переходят на следующую строку (при шрифте 200 %). Так строки стола и шторок
+ * размещают «БАНКИР» и «докуп ×N».
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun NameWithBadges(
+    name: String,
+    modifier: Modifier = Modifier,
+    style: TextStyle = FeltbookTheme.typography.title,
+    color: Color = FeltbookTheme.colors.ink,
+    badges: @Composable () -> Unit,
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(space = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(space = 2.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = name, style = style, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        badges()
+    }
 }
 
 @Preview

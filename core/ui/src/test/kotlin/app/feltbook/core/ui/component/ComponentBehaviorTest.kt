@@ -179,4 +179,57 @@ class ComponentBehaviorTest {
         button.performTouchInput { up() }
         assertEquals(0, confirmed)
     }
+
+    @Test
+    fun holdAfterConfirmAndReEnableNeedsFullHoldAgain() {
+        var confirmed = 0
+        var enabled by mutableStateOf(true)
+        rule.setContent {
+            FeltbookTheme {
+                HoldToConfirmButton(
+                    title = "Выплатить",
+                    onConfirm = {
+                        confirmed++
+                        enabled = false
+                    },
+                    enabled = enabled,
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.mainClock.autoAdvance = false
+        val button = rule.onNode(hasContentDescription("Выплатить"))
+        button.performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(700)
+        assertEquals(1, confirmed)
+        button.performTouchInput { up() }
+        rule.mainClock.advanceTimeBy(100)
+        // Операция завершилась — экран снова включает кнопку.
+        enabled = true
+        rule.mainClock.advanceTimeBy(100)
+        button.performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(50)
+        button.performTouchInput { up() }
+        rule.mainClock.advanceTimeBy(1_000)
+        assertEquals(1, confirmed)
+    }
+
+    @Test
+    fun holdDisabledMidwayDoesNotConfirm() {
+        var confirmed = 0
+        var enabled by mutableStateOf(true)
+        rule.setContent {
+            FeltbookTheme { HoldToConfirmButton(title = "Рейк", onConfirm = { confirmed++ }, enabled = enabled) }
+        }
+        rule.waitForIdle()
+        rule.mainClock.autoAdvance = false
+        val button = rule.onNode(hasContentDescription("Рейк"))
+        button.performTouchInput { down(center) }
+        rule.mainClock.advanceTimeBy(300)
+        enabled = false
+        rule.mainClock.advanceTimeBy(1_000)
+        button.performTouchInput { up() }
+        rule.mainClock.advanceTimeBy(300)
+        assertEquals(0, confirmed)
+    }
 }

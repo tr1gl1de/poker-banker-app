@@ -40,8 +40,10 @@ const val AMOUNT_MIN_FONT_FRACTION: Float = 0.7f
 
 /**
  * Сумма, которая никогда не переносится (железное правило №7): одна строка, `tnum`,
- * `TextAutoSize.StepBased` от кегля [style] до `max(12 sp, 70 %)`. [contentDescription] — фраза для TalkBack
- * со знаком и словом («Банкир выплачивает 353 рубля»); без неё TalkBack прочтёт [text].
+ * `TextAutoSize.StepBased` от кегля [style] до `max(12 sp, 70 %)`. Обычные пробелы в [text] заменяются
+ * на неразрывные: «1 053 ₽» не разрывается, даже если строку собрали без [MoneyFormat].
+ * [contentDescription] — фраза для TalkBack со знаком и словом («Банкир выплачивает 353 рубля»);
+ * без неё TalkBack прочтёт [text].
  */
 @Composable
 fun AmountText(
@@ -55,7 +57,7 @@ fun AmountText(
     val maxSize = style.fontSize
     val minSize = minOf(maxSize.value, maxOf(AmountMinFontSize.value, maxSize.value * AMOUNT_MIN_FONT_FRACTION)).sp
     BasicText(
-        text = text,
+        text = text.replace(' ', MoneyFormat.NBSP),
         modifier =
             if (contentDescription != null) {
                 modifier.semantics { this.contentDescription = contentDescription }
@@ -104,6 +106,9 @@ const val AMOUNT_COLUMN_MAX_FRACTION: Float = 0.5f
  * Строка с суммой справа (m3-ui-spec §4.17): [leading] (аватар/чекбокс/дата) + [content] (имя и мета,
  * обрезается многоточием) + [trailing] (суммы). Правый слот меряется с `maxWidth = 50 %` ширины строки
  * и никогда не обрезается — уступает левая часть.
+ *
+ * Имя и значки («БАНКИР», «докуп ×N») в [content] — через [NameWithBadges]: значки уступают место имени
+ * и при крупном шрифте переходят на следующую строку, а не съедают имя.
  */
 @Composable
 fun AmountRowLayout(
@@ -142,9 +147,9 @@ fun AmountRowLayout(
         val rowHeight = (all.maxOfOrNull { it.height } ?: 0).coerceIn(constraints.minHeight, constraints.maxHeight)
         layout(width, rowHeight) {
             fun Placeable.y() = verticalAlignment.align(height, rowHeight)
-            leadingPlaceables.forEach { it.place(0, it.y()) }
-            contentPlaceables.forEach { it.place(leadingWidth + leadingGapPx, it.y()) }
-            trailingPlaceables.forEach { it.place(width - it.width, it.y()) }
+            leadingPlaceables.forEach { it.placeRelative(0, it.y()) }
+            contentPlaceables.forEach { it.placeRelative(leadingWidth + leadingGapPx, it.y()) }
+            trailingPlaceables.forEach { it.placeRelative(width - it.width, it.y()) }
         }
     }
 }
@@ -165,16 +170,7 @@ private fun AmountRowLayoutPreview() {
                 },
             ) {
                 Column {
-                    Row {
-                        Text(
-                            text = "Константин Константинопольский",
-                            style = type.title,
-                            color = colors.ink,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(weight = 1f, fill = false),
-                        )
-                    }
+                    NameWithBadges(name = "Константин Константинопольский") { RebuyBadge(count = 2) }
                     Text(text = "закуп 3 000 · 1 ч 52 мин", style = type.ledgerTight, color = colors.ledger)
                 }
             }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import app.feltbook.core.ui.R
 import app.feltbook.core.ui.format.MoneyFormat
 import app.feltbook.core.ui.format.a11yRubles
+import app.feltbook.core.ui.theme.FeltbookColors
 import app.feltbook.core.ui.theme.FeltbookDimens
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
@@ -124,18 +127,18 @@ private fun ScoreboardOval(state: ScoreboardState, onClick: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(space = 2.dp),
         ) {
-            Text(text = title.uppercase(), style = type.overlineBoard, color = colors.inkSoft, maxLines = 1)
+            Text(text = title.uppercase(), style = type.overlineBoard, color = colors.onFeltTableSoft, maxLines = 1)
             AmountText(
                 text = MoneyFormat.number(state.chipsInPlay),
                 style = type.amountBoard,
-                color = colors.ink,
+                color = colors.onFeltTable,
                 textAlign = TextAlign.Center,
             )
             // При крупном шрифте мета-строка переносится, а не упирается в борт овала.
             Text(
                 text = state.chipsMeta,
                 style = type.small,
-                color = colors.inkSoft,
+                color = colors.onFeltTableSoft,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
@@ -144,6 +147,7 @@ private fun ScoreboardOval(state: ScoreboardState, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ScoreboardTile(
     cell: ScoreboardCell,
@@ -154,26 +158,12 @@ private fun ScoreboardTile(
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     val shape = FeltbookTheme.shapes.card
-    val value =
-        when (cell) {
-            ScoreboardCell.Cash -> state.cashOnHand
-            ScoreboardCell.Debts -> state.playersOwe
-            ScoreboardCell.Rake -> state.rakeDue
-            ScoreboardCell.Banker -> state.bankerIncome
-        }
-    val valueColor: Color =
-        when (cell) {
-            ScoreboardCell.Cash, ScoreboardCell.Rake -> colors.ink
-            ScoreboardCell.Debts -> if (value > 0) colors.owe else colors.ink
-            ScoreboardCell.Banker -> colors.brassLight
-        }
+    val value = state.valueOf(cell)
+    val valueColor = cell.valueColor(value, colors)
     val label = stringResource(cell.label)
-    val bankerOwes =
-        if (cell == ScoreboardCell.Debts && state.bankerOwes > 0) {
-            stringResource(R.string.scoreboard_banker_owes, MoneyFormat.rub(state.bankerOwes))
-        } else {
-            null
-        }
+    val bankerOwesAmount =
+        if (cell == ScoreboardCell.Debts && state.bankerOwes > 0) MoneyFormat.rub(state.bankerOwes) else null
+    val bankerOwes = bankerOwesAmount?.let { stringResource(R.string.scoreboard_banker_owes, it) }
     val description =
         stringResource(R.string.a11y_scoreboard_cell, label, a11yRubles(value)) +
             (bankerOwes?.let { ", $it" } ?: "")
@@ -189,11 +179,12 @@ private fun ScoreboardTile(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(space = 2.dp),
     ) {
+        // Подпись может занять 2 строки при крупном шрифте; сумма — никогда не обрезается.
         Text(
             text = "${stringResource(cell.suit.glyph)} $label",
             style = type.ledgerTight,
             color = colors.ledger,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.clearAndSetSemantics {},
         )
@@ -203,17 +194,36 @@ private fun ScoreboardTile(
             color = valueColor,
             modifier = Modifier.clearAndSetSemantics {},
         )
-        if (bankerOwes != null) {
-            Text(
-                text = bankerOwes,
-                style = type.ledgerTight,
-                color = colors.pay,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        if (bankerOwesAmount != null) {
+            // «банкир должен» переносится, сумма остаётся целой (AmountText уменьшается, но не обрезается).
+            FlowRow(
                 modifier = Modifier.clearAndSetSemantics {},
-            )
+                horizontalArrangement = Arrangement.spacedBy(space = 4.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.scoreboard_banker_owes_label),
+                    style = type.ledgerTight,
+                    color = colors.pay,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                AmountText(text = bankerOwesAmount, style = type.ledgerTight, color = colors.pay)
+            }
         }
     }
+}
+
+private fun ScoreboardState.valueOf(cell: ScoreboardCell): Long = when (cell) {
+    ScoreboardCell.Cash -> cashOnHand
+    ScoreboardCell.Debts -> playersOwe
+    ScoreboardCell.Rake -> rakeDue
+    ScoreboardCell.Banker -> bankerIncome
+}
+
+private fun ScoreboardCell.valueColor(value: Long, colors: FeltbookColors): Color = when (this) {
+    ScoreboardCell.Cash, ScoreboardCell.Rake -> colors.ink
+    ScoreboardCell.Debts -> if (value > 0) colors.owe else colors.ink
+    ScoreboardCell.Banker -> colors.brassLight
 }
 
 /** Пример для превью и скриншотов (цифры макета Main). */
