@@ -15,8 +15,10 @@ import kotlin.time.Duration
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
-/** Детерминированные id и время для тестов. */
-class TestIds(private var next: Long = 1) {
+private var idBlocks = 0L
+
+/** Детерминированные id для тестов; каждый генератор — свой блок, чтобы игры разных столов не совпадали. */
+class TestIds(private var next: Long = ++idBlocks * 1_000_000L) {
     fun uuid(): Uuid = Uuid.fromLongs(0x0FE1_7B00_C000_0000L, next++)
 }
 
