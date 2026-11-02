@@ -205,8 +205,29 @@ class OddsViewModelTest {
         val outs = notNull(viewModel.state.outs)
         assertEquals(9, outs.outs.getValue(HandCategory.FLUSH).size)
         assertEquals(HandCategory.FLUSH to 9, outs.mainDraw())
-        notNull(outs.byRiver)
+        assertEquals(9, outs.total)
+        assertEquals(6, outs.overcards.size)
+        assertEquals(1.0 - 703.0 / 1081.0, notNull(outs.byRiver), 1e-12)
+        assertEquals(36, outs.ruleOfFour)
         assertEquals(HandCategory.HIGH_CARD, viewModel.state.hand?.category)
+    }
+
+    @Test
+    fun threeOfAKindIsSetTripsOrBoardTrips() {
+        val viewModel = viewModel()
+        viewModel.pick(CardSlot.Hole(0), "Td", "Th")
+        viewModel.pick(CardSlot.Board(0), "Tc", "8s", "3h")
+        assertEquals(TripsKind.SET, viewModel.state.hand?.trips)
+        assertTrue(viewModel.state.pocketPair)
+
+        viewModel.pick(CardSlot.Hole(1), "Ad")
+        viewModel.pick(CardSlot.Board(1), "Ts")
+        assertEquals(TripsKind.TRIPS, viewModel.state.hand?.trips)
+        assertFalse(viewModel.state.pocketPair)
+
+        viewModel.pick(CardSlot.Hole(0), "Kc")
+        viewModel.pick(CardSlot.Board(2), "Th")
+        assertEquals(TripsKind.BOARD, viewModel.state.hand?.trips)
     }
 
     @Test

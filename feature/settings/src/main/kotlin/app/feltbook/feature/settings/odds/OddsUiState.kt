@@ -17,9 +17,12 @@ import app.feltbook.core.ui.component.AmountEntry
 /** Поле суммы калькулятора. */
 enum class OddsAmountField { POT, CALL }
 
-/** Текущая комбинация: категория и старшая карта (для «старшая карта, туз»). */
+/** Тройка: сет (карманная пара), трипс (одна своя карта) или тройка целиком на столе. */
+enum class TripsKind { SET, TRIPS, BOARD }
+
+/** Текущая комбинация: категория, старшая карта («старшая карта, туз») и вид тройки. */
 @Immutable
-data class HandSummary(val category: HandCategory, val topRank: Rank)
+data class HandSummary(val category: HandCategory, val topRank: Rank, val trips: TripsKind? = null)
 
 /** Префлоп: сила руки и ориентир позиции (не совет). */
 @Immutable
@@ -70,6 +73,10 @@ data class OddsUiState(
     val amountEditor: AmountEditorUi? = null,
 ) {
     val opponents: Int get() = players - 1
+
+    /** Карманная пара — ауты на тройку называются «на сет», иначе «на трипс». */
+    val pocketPair: Boolean
+        get() = hole.all { it != null } && hole.mapNotNull { it?.rank }.distinct().size == 1
     val canRemovePlayer: Boolean get() = players > EquityRequest.MIN_PLAYERS
     val canAddPlayer: Boolean get() = players < EquityRequest.MAX_PLAYERS
 

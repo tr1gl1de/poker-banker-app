@@ -160,7 +160,7 @@ internal fun ResultTiles(state: OddsUiState, modifier: Modifier = Modifier) {
         val outs = state.outs
         when {
             preflop != null -> PreflopTile(preflop = preflop, modifier = tile)
-            outs != null -> OutsTile(outs = outs, modifier = tile)
+            outs != null -> OutsTile(outs = outs, pocketPair = state.pocketPair, modifier = tile)
         }
     }
 }
@@ -168,7 +168,12 @@ internal fun ResultTiles(state: OddsUiState, modifier: Modifier = Modifier) {
 private enum class TileTone { Neutral, Pay, Owe }
 
 @Composable
-private fun Tile(tone: TileTone, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun Tile(
+    tone: TileTone,
+    modifier: Modifier = Modifier,
+    dimmed: Boolean = false,
+    content: @Composable () -> Unit,
+) {
     val colors = FeltbookTheme.colors
     val shape = FeltbookTheme.shapes.card
     val (background, border) = when (tone) {
@@ -179,6 +184,7 @@ private fun Tile(tone: TileTone, modifier: Modifier = Modifier, content: @Compos
     Column(
         modifier =
             modifier
+                .alpha(alpha = if (dimmed) CALCULATING_ALPHA else 1f)
                 .clip(shape)
                 .background(color = background)
                 .then(if (border != null) Modifier.border(width = 1.dp, color = border, shape = shape) else Modifier)
@@ -201,43 +207,67 @@ private fun PotOddsTile(state: OddsUiState, modifier: Modifier = Modifier) {
         PotOddsVerdict.DOES_NOT_PAY -> TileTone.Owe
         null -> TileTone.Neutral
     }
-    Tile(tone = tone, modifier = modifier) {
+    Tile(tone = tone, modifier = modifier, dimmed = state.calculating && odds != null) {
         Text(text = stringResource(R.string.odds_pot_odds), style = type.small, color = colors.inkSoft)
         if (odds == null) {
             Text(text = stringResource(R.string.odds_pot_missing), style = type.smallSemi, color = colors.inkSoft)
         } else {
-            AmountText(
-                text = stringResource(R.string.odds_pot_needed, OddsFormat.percent(odds.required)),
+            // Вердикт сравнивает именно это число (победа + доля дележа) с нужной долей — показываем оба.
+            val equity = state.equity?.equity
+            val needed = OddsFormat.percent(odds.required)
+            val (text, description) =
+                if (equity != null) {
+                    stringResource(R.string.odds_pot_equity_needed, OddsFormat.percent(equity), needed) to
+                        stringResource(
+                            R.string.odds_pot_equity_needed_a11y,
+                            OddsFormat.percentNumber(equity),
+                            OddsFormat.percentNumber(odds.required),
+                        )
+                } else {
+                    stringResource(R.string.odds_pot_needed, needed) to
+                        stringResource(R.string.odds_pot_needed_a11y, OddsFormat.percentNumber(odds.required))
+                }
+            // Переносится по « · », числа склеены неразрывными пробелами — не обрезается многоточием.
+            Text(
+                text = text,
                 style = type.sectionTitle,
                 color = colors.ink,
+                modifier = Modifier.semantics { contentDescription = description },
             )
-            VerdictLine(verdict = verdict, calculating = state.calculating)
+            VerdictLine(state = state)
         }
     }
 }
 
 @Composable
-private fun VerdictLine(verdict: PotOddsVerdict?, calculating: Boolean) {
+private fun VerdictLine(state: OddsUiState) {
     val colors = FeltbookTheme.colors
-    val (text, a11y, color) = when (verdict) {
+    val (text, a11y, color) = when (state.verdict) {
         PotOddsVerdict.PAYS_OFF -> Triple(R.string.odds_call_ok, R.string.odds_call_ok_a11y, colors.pay)
+
         PotOddsVerdict.DOES_NOT_PAY -> Triple(R.string.odds_call_bad, R.string.odds_call_bad_a11y, colors.owe)
-        null -> Triple(R.string.odds_call_no_equity, R.string.odds_call_no_equity, colors.inkSoft)
+
+        null -> {
+            val hint = when {
+                state.status == EquityStatus.INCOMPLETE_BOARD -> R.string.odds_call_need_board
+                state.status == EquityStatus.TOO_MANY_DEAD -> R.string.odds_call_too_many_dead
+                state.status == EquityStatus.READY -> R.string.odds_calculating
+                else -> R.string.odds_call_no_equity
+            }
+            Triple(hint, hint, colors.inkSoft)
+        }
     }
     val description = stringResource(a11y)
     Text(
         text = stringResource(text),
         style = FeltbookTheme.typography.smallSemi,
         color = color,
-        modifier =
-            Modifier
-                .alpha(alpha = if (calculating) CALCULATING_ALPHA else 1f)
-                .semantics { contentDescription = description },
+        modifier = Modifier.semantics { contentDescription = description },
     )
 }
 
 @Composable
-private fun OutsTile(outs: OutsResult, modifier: Modifier = Modifier) {
+private fun OutsTile(outs: OutsResult, pocketPair: Boolean, modifier: Modifier = Modifier) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     val main = outs.mainDraw()
@@ -250,15 +280,27 @@ private fun OutsTile(outs: OutsResult, modifier: Modifier = Modifier) {
                 text =
                     stringResource(
                         R.string.odds_outs_title,
-                        drawName(main.first, main.second),
+                        drawName(main.first, outs, pocketPair),
                         outsCount(outs.total),
                     ),
                 style = type.small,
                 color = colors.inkSoft,
             )
-            AmountText(text = outsValue(outs), style = type.sectionTitle, color = colors.ink)
+            AmountText(
+                text = outsValue(outs),
+                style = type.sectionTitle,
+                color = colors.ink,
+                contentDescription = outsValueA11y(outs),
+            )
             Text(text = outsHint(outs), style = type.ledgerS, color = colors.ledger)
-            outsKinds(outs)?.let { Text(text = it, style = type.ledgerS, color = colors.ledger) }
+            outsKinds(outs, pocketPair)?.let { Text(text = it, style = type.ledgerS, color = colors.ledger) }
+        }
+        if (outs.overcards.isNotEmpty()) {
+            Text(
+                text = pluralStringResource(R.plurals.odds_overcards, outs.overcards.size, outs.overcards.size),
+                style = type.ledgerS,
+                color = colors.ledger,
+            )
         }
     }
 }
@@ -274,17 +316,24 @@ private fun outsValue(outs: OutsResult): String {
     }
 }
 
-/** Быстрая оценка: «≈18 % / 36 % по 2 и 4» на флопе, «≈18 % по правилу 2» на тёрне. */
+/** TalkBack: «на тёрне 19,1 процента, к риверу 35,0 процента». */
+@Composable
+private fun outsValueA11y(outs: OutsResult): String {
+    val byRiver = outs.byRiver
+    val next = OddsFormat.percentNumber(outs.nextCard)
+    return if (byRiver != null) {
+        stringResource(R.string.odds_outs_value_a11y, next, OddsFormat.percentNumber(byRiver))
+    } else {
+        stringResource(R.string.odds_outs_value_turn_a11y, next)
+    }
+}
+
+/** Быстрая оценка как в макете: «≈36 % по правилу 4» на флопе, «≈18 % по правилу 2» на тёрне. */
 @Composable
 private fun outsHint(outs: OutsResult): String {
     val ruleOfFour = outs.ruleOfFour
     return if (ruleOfFour != null) {
-        val rules = stringResource(
-            R.string.odds_outs_value,
-            MoneyFormat.percent(outs.ruleOfTwo),
-            MoneyFormat.percent(ruleOfFour),
-        )
-        stringResource(R.string.odds_outs_hint, rules)
+        stringResource(R.string.odds_outs_hint, MoneyFormat.percent(ruleOfFour))
     } else {
         stringResource(R.string.odds_outs_hint_turn, MoneyFormat.percent(outs.ruleOfTwo))
     }

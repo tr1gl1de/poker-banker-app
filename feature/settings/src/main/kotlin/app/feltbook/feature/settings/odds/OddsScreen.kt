@@ -68,6 +68,7 @@ import app.feltbook.feature.settings.R
 
 /** Наибольшее число позиций, которое помещается в сегменты равной ширины; больше — горизонтальная прокрутка. */
 private const val FIXED_POSITIONS = 6
+private const val SCROLLING_POSITIONS_FONT_SCALE = 1.5f
 private const val FLOP_CARDS = 3
 private const val TURN_INDEX = 3
 private const val SECOND_CARD_TILT = 4f
@@ -480,17 +481,16 @@ private fun PositionSelector(
 ) {
     val description = stringResource(R.string.odds_position)
     val labeled = modifier.semantics { contentDescription = description }
-    if (positions.size <= FIXED_POSITIONS) {
-        // Аббревиатуры UTG…BB при 200 % переносились по буквам; полные названия — в памятке ниже.
-        FixedFontScale {
-            SegmentedToggle(
-                options = positions.map { it.label },
-                selectedIndex = positions.indexOfFirst { it.label == selected },
-                onSelect = { onSelect(positions[it].label) },
-                modifier = labeled,
-                style = SegmentedToggleStyle.Position,
-            )
-        }
+    // Крупный шрифт (≥ 150 %) — прокрутка с растущим текстом: в равных сегментах аббревиатуры не помещаются.
+    val largeFont = LocalDensity.current.fontScale >= SCROLLING_POSITIONS_FONT_SCALE
+    if (positions.size <= FIXED_POSITIONS && !largeFont) {
+        SegmentedToggle(
+            options = positions.map { it.label },
+            selectedIndex = positions.indexOfFirst { it.label == selected },
+            onSelect = { onSelect(positions[it].label) },
+            modifier = labeled,
+            style = SegmentedToggleStyle.Position,
+        )
     } else {
         ScrollingPositions(positions = positions, selected = selected, onSelect = onSelect, modifier = labeled)
     }

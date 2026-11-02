@@ -40,16 +40,24 @@ internal fun handText(hand: HandSummary): String = when (hand.category) {
             stringArrayResource(R.array.odds_rank_names_lower)[hand.topRank.ordinal],
         )
 
+    HandCategory.THREE_OF_A_KIND -> stringResource(
+        when (hand.trips) {
+            TripsKind.SET, null -> R.string.odds_hand_set
+            TripsKind.TRIPS -> R.string.odds_hand_trips
+            TripsKind.BOARD -> R.string.odds_hand_board_trips
+        },
+    )
+
     else -> categoryName(hand.category)
 }
 
 /** Название категории без уточнений (виды аутов). Старшей карты среди аутов не бывает. */
 @Composable
-internal fun categoryName(category: HandCategory): String = stringResource(
+internal fun categoryName(category: HandCategory, pocketPair: Boolean = true): String = stringResource(
     when (category) {
         HandCategory.HIGH_CARD, HandCategory.ONE_PAIR -> R.string.odds_hand_pair
         HandCategory.TWO_PAIR -> R.string.odds_hand_two_pair
-        HandCategory.THREE_OF_A_KIND -> R.string.odds_hand_set
+        HandCategory.THREE_OF_A_KIND -> if (pocketPair) R.string.odds_hand_set else R.string.odds_hand_trips
         HandCategory.STRAIGHT -> R.string.odds_hand_straight
         HandCategory.FLUSH -> R.string.odds_hand_flush
         HandCategory.FULL_HOUSE -> R.string.odds_hand_full_house
@@ -63,31 +71,39 @@ internal fun OutsResult.mainDraw(): Pair<HandCategory, Int>? = outs.entries
     .maxWithOrNull(compareBy<Map.Entry<HandCategory, List<Card>>>({ it.value.size }, { it.key }))
     ?.let { it.key to it.value.size }
 
-/** Стрит-дро с ≤ 4 аутами — гатшот. */
-private const val GUTSHOT_OUTS = 4
-
-/** «Флеш-дро», «Гатшот», «На сет». */
+/**
+ * «Флеш-дро», «Гатшот» (стрит закрывает один ранг), «Двусторонний стрит-дро» (два ранга),
+ * «На сет» (карманная пара) / «На трипс».
+ */
 @Composable
-internal fun drawName(category: HandCategory, outs: Int): String = stringResource(
+internal fun drawName(category: HandCategory, outs: OutsResult, pocketPair: Boolean): String = stringResource(
     when (category) {
         HandCategory.FLUSH -> R.string.odds_draw_flush
-        HandCategory.STRAIGHT -> if (outs <= GUTSHOT_OUTS) R.string.odds_draw_gutshot else R.string.odds_draw_straight
-        HandCategory.THREE_OF_A_KIND -> R.string.odds_draw_set
+
+        HandCategory.STRAIGHT ->
+            if (outs.straightRanks <= 1) R.string.odds_draw_gutshot else R.string.odds_draw_straight
+
+        HandCategory.THREE_OF_A_KIND -> if (pocketPair) R.string.odds_draw_set else R.string.odds_draw_trips
+
         HandCategory.HIGH_CARD, HandCategory.ONE_PAIR -> R.string.odds_draw_pair
+
         HandCategory.TWO_PAIR -> R.string.odds_draw_two_pair
+
         HandCategory.FULL_HOUSE -> R.string.odds_draw_full_house
+
         HandCategory.FOUR_OF_A_KIND -> R.string.odds_draw_quads
+
         HandCategory.STRAIGHT_FLUSH -> R.string.odds_draw_straight_flush
     },
 )
 
 /** Разбивка по видам, если их больше одного: «флеш 9 · стрит 3». */
 @Composable
-internal fun outsKinds(outs: OutsResult): String? {
+internal fun outsKinds(outs: OutsResult, pocketPair: Boolean): String? {
     if (outs.outs.size < 2) return null
     val separator = stringResource(R.string.odds_outs_separator)
     return outs.outs.entries.map { (category, cards) ->
-        stringResource(R.string.odds_outs_kind, categoryName(category), cards.size)
+        stringResource(R.string.odds_outs_kind, categoryName(category, pocketPair), cards.size)
     }.joinToString(separator)
 }
 

@@ -9,6 +9,8 @@ import kotlin.math.min
  * отрыв от того, что показывает один стол, растёт (в порядке [HandCategory]). Так не считаются
  * улучшения, общие для всех: спарившийся стол (AA на 9-8-7 + 9 — «две пары» есть у каждого), стрит
  * или флеш целиком на столе. Сет из пары, флеш, стрит, вторая пара с нашей картой — ауты.
+ * Пара из «старшей карты» аутом не считается (такая пара редко выигрывает): карты, спаривающие
+ * свою карту старше всего стола, — [overcards], отдельно и не входят в [total] и шансы.
  * [outs] — ауты по категории, которую они дают (от сильной к слабой); [unseen] — неизвестных карт
  * (колода без своих, стола и мёртвых; карты соперников неизвестны и входят сюда).
  */
@@ -17,11 +19,17 @@ data class OutsResult(
     val outs: Map<HandCategory, List<Card>>,
     val unseen: Int,
     val streetsLeft: Int,
+    val overcards: List<Card> = emptyList(),
 ) {
     val total: Int get() = outs.values.sumOf { it.size }
 
     /** Самый сильный вид дро («флеш-дро») или `null`, если аутов нет. */
     val strongest: HandCategory? get() = outs.keys.maxOrNull()
+
+    /**
+     * Сколько разных рангов закрывает стрит: 1 — гатшот (4 аута), 2 — двусторонний (8 аутов); 0 — стрит-дро нет.
+     */
+    val straightRanks: Int get() = outs[HandCategory.STRAIGHT]?.map { it.rank }?.distinct()?.size ?: 0
 
     /** Точный шанс усилиться следующей картой: `outs / unseen`. */
     val nextCard: Double get() = total.toDouble() / unseen
@@ -62,13 +70,19 @@ object OutsCalculator {
         val current = HandEvaluator.categoryOf(HandEvaluator.evaluate(handMask))
         val lead = current.ordinal - HandEvaluator.categoryOf(HandEvaluator.evaluate(boardMask)).ordinal
         val unseenCards = Deck.cards - known.toSet()
-        val outs = unseenCards
-            .mapNotNull { card ->
-                val improved = HandEvaluator.categoryOf(HandEvaluator.evaluate(handMask or card.bit))
-                val boardOnly = HandEvaluator.categoryOf(HandEvaluator.evaluate(boardMask or card.bit))
-                val improves = improved > current && improved.ordinal - boardOnly.ordinal > lead
-                if (improves) improved to card else null
-            }
+        val improving = unseenCards.mapNotNull { card ->
+            val improved = HandEvaluator.categoryOf(HandEvaluator.evaluate(handMask or card.bit))
+            val boardOnly = HandEvaluator.categoryOf(HandEvaluator.evaluate(boardMask or card.bit))
+            val improves = improved > current && improved.ordinal - boardOnly.ordinal > lead
+            if (improves) improved to card else null
+        }
+        // Пара из старшей карты — не аут; спаривание своей карты старше стола показываем как оверкарты.
+        val (pairs, real) = improving.partition { (improved, _) ->
+            current == HandCategory.HIGH_CARD && improved == HandCategory.ONE_PAIR
+        }
+        val boardTop = board.maxOf { it.rank }
+        val overRanks = hole.map { it.rank }.filter { it > boardTop }.toSet()
+        val outs = real
             .groupBy({ it.first }, { it.second })
             .toList()
             .sortedByDescending { it.first }
@@ -78,6 +92,7 @@ object OutsCalculator {
             outs = outs,
             unseen = unseenCards.size,
             streetsLeft = EquityRequest.BOARD_CARDS - board.size,
+            overcards = pairs.map { it.second }.filter { it.rank in overRanks },
         )
     }
 }

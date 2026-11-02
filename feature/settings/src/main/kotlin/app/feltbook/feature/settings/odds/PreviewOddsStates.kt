@@ -67,8 +67,8 @@ internal object PreviewOddsStates {
             tie = 0.0,
             lose = 0.088,
             tieShare = 0.0,
-            samples = 1_000_000,
-            exact = true,
+            samples = 150_000,
+            exact = false,
             isFinal = true,
         ),
     )

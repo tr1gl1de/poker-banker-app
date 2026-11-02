@@ -17,22 +17,36 @@ class OutsCalculatorTest {
         OutsCalculator.outs(cards(hole), cards(board), cards(dead).toSet())
 
     @Test
-    fun `флеш-дро и оверкарты на флопе`() {
+    fun `флеш-дро на флопе, оверкарты отдельно`() {
         val result = outs("Ah Kh", "Qh 7h 2c")
         assertEquals(HIGH_CARD, result.current)
-        assertEquals(listOf(FLUSH, ONE_PAIR), result.outs.keys.toList())
+        assertEquals(listOf(FLUSH), result.outs.keys.toList())
         assertEquals(9, result.outs.getValue(FLUSH).size)
         assertTrue(result.outs.getValue(FLUSH).all { it.suit == Suit.HEARTS })
-        assertEquals(cards("Ad As Kc Kd Ks Ac").toSet(), result.outs.getValue(ONE_PAIR).toSet())
+        assertEquals(cards("Ad As Kc Kd Ks Ac").toSet(), result.overcards.toSet())
         assertEquals(FLUSH, result.strongest)
-        assertEquals(15, result.total)
+        assertEquals(9, result.total)
         assertEquals(47, result.unseen)
         assertEquals(2, result.streetsLeft)
-        assertEquals(15.0 / 47, result.nextCard)
-        // 1 − C(32, 2) / C(47, 2) = 1 − 496 / 1081.
-        assertEquals(1.0 - 496.0 / 1081.0, result.byRiver)
-        assertEquals(30, result.ruleOfTwo)
-        assertEquals(60, result.ruleOfFour)
+        assertEquals(9.0 / 47, result.nextCard)
+        // 1 − C(38, 2) / C(47, 2) = 1 − 703 / 1081 ≈ 35,0 %.
+        assertEquals(1.0 - 703.0 / 1081.0, result.byRiver)
+        assertEquals(18, result.ruleOfTwo)
+        assertEquals(36, result.ruleOfFour)
+    }
+
+    @Test
+    fun `спаривание младшей своей карты — не аут и не оверкарта`() {
+        val result = outs("Ac 4d", "Kh Qs 8c")
+        assertTrue(result.outs.isEmpty())
+        assertEquals(cards("Ad Ah As").toSet(), result.overcards.toSet())
+    }
+
+    @Test
+    fun `гатшот — один ранг`() {
+        val result = outs("9c 8d", "Js 7h 2c")
+        assertEquals(1, result.straightRanks)
+        assertEquals(4, result.outs.getValue(STRAIGHT).size)
     }
 
     @Test
@@ -41,6 +55,8 @@ class OutsCalculatorTest {
         assertEquals(8, result.outs.getValue(STRAIGHT).size)
         assertEquals(setOf(Rank.TEN, Rank.FIVE), result.outs.getValue(STRAIGHT).map { it.rank }.toSet())
         assertEquals(STRAIGHT, result.strongest)
+        assertEquals(2, result.straightRanks)
+        assertEquals(6, result.overcards.size) // 9 и 8 старше стола
     }
 
     @Test
