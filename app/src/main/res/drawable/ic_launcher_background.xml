@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Сукно с лёгкой виньеткой (DESIGN.md, иконка вариант A). Заглушка M0, финальная иконка — M6. -->
+<!--
+  Сукно felt #0B2A20 с виньеткой (вариант A). В макете — светлый круг feltLight #1B5A43 · 45 % с центром (54, 44);
+  здесь он же плавным радиальным градиентом: #124030 (= felt + 45 % feltLight) в центре → felt к краям.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -10,12 +13,13 @@
         <aapt:attr name="android:fillColor">
             <gradient
                 android:centerX="54"
-                android:centerY="48"
-                android:gradientRadius="76"
+                android:centerY="44"
+                android:gradientRadius="70"
                 android:type="radial">
-                <item android:color="#FF10382B" android:offset="0" />
-                <item android:color="#FF0B2A20" android:offset="0.55" />
-                <item android:color="#FF071A14" android:offset="1" />
+                <item android:color="#FF124030" android:offset="0" />
+                <item android:color="#FF10382B" android:offset="0.5" />
+                <item android:color="#FF0B2A20" android:offset="0.85" />
+                <item android:color="#FF0B2A20" android:offset="1" />
             </gradient>
         </aapt:attr>
     </path>

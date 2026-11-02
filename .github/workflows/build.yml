@@ -63,6 +63,14 @@ jobs:
           path: ${{ steps.apk.outputs.name }}
           if-no-files-found: error
 
+      # Минифицированный release (без подписи) — для job release-smoke.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-unsigned-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Upload reports
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -73,3 +81,176 @@ jobs:
             **/build/test-results/
             **/build/outputs/roborazzi/
           if-no-files-found: ignore
+
+  # Минифицированный release на эмуляторе: старт, Главная, «Новая игра», стол; падение процесса — ошибка.
+  # Ловит то, чего не видят unit-тесты на debug: правила R8 (сериализаторы маршрутов, Room, Hilt).
+  # continue-on-error: пока job новый (эмулятор в CI бывает нестабилен) — не блокирует; после нескольких
+  # зелёных прогонов подряд переключить на false (docs/plan/m6-release-checklist.md).
+  release-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-unsigned-apk
+          path: smoke-in
+
+      # Только для теста: release подписывается одноразовым debug-ключом, в релиз этот APK не идёт.
+      - name: Sign release APK with throwaway debug key
+        run: |
+          keytool -genkeypair -keystore "$RUNNER_TEMP/smoke.jks" -storepass android -keypass android \
+            -alias smoke -keyalg RSA -keysize 2048 -validity 1 -dname "CN=Feltbook smoke" -noprompt
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$build_tools/apksigner" sign --ks "$RUNNER_TEMP/smoke.jks" --ks-pass pass:android \
+            --ks-key-alias smoke --key-pass pass:android \
+            --out "$RUNNER_TEMP/feltbook-release-smoke.apk" smoke-in/app-release-unsigned.apk
+          "$build_tools/apksigner" verify "$RUNNER_TEMP/feltbook-release-smoke.apk"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Emulator smoke test
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: .github/workflows/release-smoke.sh "$RUNNER_TEMP/feltbook-release-smoke.apk" smoke-out
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: release-smoke
+          path: smoke-out/
+          if-no-files-found: ignore
+
+  # Автосборка для владельца и друзей: каждый зелёный push в main → подписанный release APK в GitHub Releases
+  # (тег build-<versionCode>, «Latest»). Постоянная ссылка на свежую сборку:
+  # https://github.com/tr1gl1de/poker-banker-app/releases/latest/download/feltbook.apk
+  # Без секретов подписи job падает — неподписанное не публикуется. Хранятся последние 10 сборок.
+  auto-release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    concurrency:
+      group: auto-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # versionCode = число коммитов; заметки — коммиты с прошлого тега build-*.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-read-only: true
+
+      - name: Android SDK 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+
+      - name: Keystore
+        env:
+          FELTBOOK_KEYSTORE_BASE64: ${{ secrets.FELTBOOK_KEYSTORE_BASE64 }}
+          FELTBOOK_KEYSTORE_PASSWORD: ${{ secrets.FELTBOOK_KEYSTORE_PASSWORD }}
+          FELTBOOK_KEY_ALIAS: ${{ secrets.FELTBOOK_KEY_ALIAS }}
+          FELTBOOK_KEY_PASSWORD: ${{ secrets.FELTBOOK_KEY_PASSWORD }}
+        run: |
+          missing=""
+          for name in FELTBOOK_KEYSTORE_BASE64 FELTBOOK_KEYSTORE_PASSWORD FELTBOOK_KEY_ALIAS FELTBOOK_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Нет секретов подписи:$missing — автосборка без подписи не публикуется"
+            exit 1
+          fi
+          echo "$FELTBOOK_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/feltbook.jks"
+          echo "FELTBOOK_KEYSTORE_FILE=$RUNNER_TEMP/feltbook.jks" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        id: apk
+        env:
+          FELTBOOK_KEYSTORE_PASSWORD: ${{ secrets.FELTBOOK_KEYSTORE_PASSWORD }}
+          FELTBOOK_KEY_ALIAS: ${{ secrets.FELTBOOK_KEY_ALIAS }}
+          FELTBOOK_KEY_PASSWORD: ${{ secrets.FELTBOOK_KEY_PASSWORD }}
+        run: |
+          ./gradlew :app:assembleRelease -Pfeltbook.autoBuild=true --stacktrace
+          ./gradlew -q :app:printVersion -Pfeltbook.autoBuild=true | tee version.txt
+          code=$(grep '^versionCode=' version.txt | cut -d= -f2)
+          name=$(grep '^versionName=' version.txt | cut -d= -f2)
+          apk=app/build/outputs/apk/release/app-release.apk
+          test -f "$apk" || { echo "::error::Нет подписанного $apk"; exit 1; }
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$build_tools/apksigner" verify --print-certs "$apk" | tee certs.txt
+          mkdir -p dist
+          cp "$apk" "dist/feltbook-$name.apk"
+          cp "$apk" dist/feltbook.apk
+          cp app/build/outputs/mapping/release/mapping.txt "dist/feltbook-$name-mapping.txt"
+          (cd dist && sha256sum -- * > SHA256SUMS.txt)
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/feltbook.jks"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CODE: ${{ steps.apk.outputs.code }}
+          NAME: ${{ steps.apk.outputs.name }}
+        run: |
+          tag="build-$CODE"
+          base="${NAME%-build.*}"
+          prev=$(git tag -l 'build-*' --sort=-v:refname | grep -vx "$tag" | head -1 || true)
+          {
+            echo "Автосборка из \`main\` ($GITHUB_SHA)."
+            echo ""
+            echo "Скачать: **feltbook.apk** ниже. Устанавливается поверх прошлой версии, данные сохраняются."
+            echo ""
+            echo "### Изменения"
+            if [ -n "$prev" ]; then
+              git log --no-merges --format='- %s' "$prev..HEAD"
+            else
+              git log --no-merges --format='- %s' -20 HEAD
+            fi
+          } > notes.md
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "Релиз $tag уже есть (перезапуск) — обновляю файлы"
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --target "$GITHUB_SHA" --latest \
+              --title "Feltbook $base · сборка $CODE" --notes-file notes.md
+          fi
+          {
+            echo "### Feltbook $NAME опубликован"
+            echo "https://github.com/$GITHUB_REPOSITORY/releases/tag/$tag"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep last 10 builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --limit 200 --json tagName --jq '.[].tagName' \
+            | grep '^build-[0-9]*$' | sort -t- -k2 -n -r | tail -n +11 \
+            | while read -r old; do
+                echo "Удаляю $old"
+                gh release delete "$old" --yes --cleanup-tag
+              done

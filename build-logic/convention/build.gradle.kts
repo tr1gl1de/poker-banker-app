@@ -49,6 +49,10 @@ gradlePlugin {
             id = "feltbook.android.compose"
             implementationClass = "AndroidComposeConventionPlugin"
         }
+        register("androidTest") {
+            id = "feltbook.android.test"
+            implementationClass = "AndroidTestConventionPlugin"
+        }
         register("androidFeature") {
             id = "feltbook.android.feature"
             implementationClass = "AndroidFeatureConventionPlugin"

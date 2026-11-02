@@ -90,6 +90,12 @@ jobs:
           cp app/build/outputs/bundle/release/app-release.aab "dist/feltbook-$version$suffix.aab"
           # Карта R8 — для расшифровки стектрейсов релиза.
           cp app/build/outputs/mapping/release/mapping.txt "dist/feltbook-$version-mapping.txt"
+          if [ -z "$suffix" ]; then
+            # Подписанный APK: проверка подписи и отпечаток сертификата — в summary (сверка с keystore владельца).
+            build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+            "$build_tools/apksigner" verify --print-certs "dist/feltbook-$version.apk" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+          (cd dist && sha256sum -- * > "feltbook-$version-SHA256SUMS.txt")
           echo "### Feltbook $version$suffix" >> "$GITHUB_STEP_SUMMARY"
           ls dist >> "$GITHUB_STEP_SUMMARY"
 
@@ -118,5 +124,5 @@ jobs:
         if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-        # dist/* включает APK, AAB и feltbook-<версия>-mapping.txt.
+        # dist/* включает APK, AAB, feltbook-<версия>-mapping.txt и SHA256SUMS.
         run: gh release create "$GITHUB_REF_NAME" dist/* --title "Feltbook $GITHUB_REF_NAME" --generate-notes --verify-tag

@@ -1,0 +1,8 @@
+# Ручной Baseline Profile (временный): весь код приложения app.feltbook — горячий и в профиле.
+# Библиотеки (Compose, Navigation, Room, Hilt, coroutines) приносят свои профили в AAR и сливаются автоматически.
+# Точный профиль генерирует :baselineprofile (`./gradlew :app:generateBaselineProfile`) в
+# app/src/release/generated/baselineProfiles/ — нужен телефон с Android 13+ или с root (Redmi 6A на Android 9
+# без root не подходит: BaselineProfileRule собирает профиль только на API 33+ или root). После генерации
+# этот файл можно удалить.
+HSPLapp/feltbook/**->**(**)**
+Lapp/feltbook/**;

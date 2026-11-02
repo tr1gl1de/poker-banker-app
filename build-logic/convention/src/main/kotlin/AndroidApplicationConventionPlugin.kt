@@ -26,7 +26,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                 defaultConfig {
                     targetSdk = libs.version("targetSdk").toInt()
                     versionCode = version.code
-                    versionName = version.base
+                    versionName = version.releaseName
                 }
                 buildTypes {
                     getByName("debug") {
@@ -54,7 +54,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
 
             tasks.register<PrintVersionTask>("printVersion") {
                 versionCode.set(version.code)
-                releaseVersionName.set(version.base)
+                releaseVersionName.set(version.releaseName)
                 devVersionName.set(version.devName)
             }
         }

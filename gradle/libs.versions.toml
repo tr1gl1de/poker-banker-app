@@ -21,6 +21,8 @@ core-splashscreen = "1.2.0"
 play-services-nearby = "19.5.1"
 profileinstaller = "1.4.1"
 benchmark-macro = "1.5.0"
+# Плагин Baseline Profile выходит вместе с androidx.benchmark — держим одну версию.
+baselineprofile = "1.5.0"
 uiautomator = "2.4.0"
 androidx-test-ext-junit = "1.3.0"
 androidx-test-runner = "1.7.0"
@@ -121,6 +123,8 @@ kover-gradle-plugin = { module = "org.jetbrains.kotlinx:kover-gradle-plugin", ve
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
+android-test = { id = "com.android.test", version.ref = "agp" }
+baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
 kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -137,6 +141,7 @@ feltbook-android-application = { id = "feltbook.android.application" }
 feltbook-android-library = { id = "feltbook.android.library" }
 feltbook-android-compose = { id = "feltbook.android.compose" }
 feltbook-android-feature = { id = "feltbook.android.feature" }
+feltbook-android-test = { id = "feltbook.android.test" }
 feltbook-hilt = { id = "feltbook.hilt" }
 feltbook-room = { id = "feltbook.room" }
 feltbook-kmp-library = { id = "feltbook.kmp.library" }
