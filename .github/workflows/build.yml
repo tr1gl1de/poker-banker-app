@@ -34,6 +34,13 @@ jobs:
       - name: Android SDK 37
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
 
+      # Раннер CI — 16 ГБ: куча демона больше, чем в gradle.properties (там — под машину разработчика).
+      # ~/.gradle/gradle.properties приоритетнее проектного.
+      - name: Gradle memory for CI
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx5g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
+
       - name: Version
         id: version
         run: |
@@ -165,6 +172,13 @@ jobs:
 
       - name: Android SDK 37
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+
+      # Раннер CI — 16 ГБ: куча демона больше, чем в gradle.properties (там — под машину разработчика).
+      # ~/.gradle/gradle.properties приоритетнее проектного.
+      - name: Gradle memory for CI
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.jvmargs=-Xmx5g -XX:MaxMetaspaceSize=1536m -Dfile.encoding=UTF-8" >> ~/.gradle/gradle.properties
 
       - name: Keystore
         env:
