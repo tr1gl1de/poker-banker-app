@@ -5,6 +5,8 @@ import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.GameState
 import app.feltbook.core.domain.engine.GameStates
 import app.feltbook.core.domain.engine.NewGameInput
+import app.feltbook.core.domain.engine.SettlementChoice
+import app.feltbook.core.domain.engine.Tip
 import app.feltbook.core.domain.model.GameChange
 import app.feltbook.core.domain.model.GameRules
 import app.feltbook.core.domain.model.GameSnapshot
@@ -20,6 +22,9 @@ class TestTable(
 ) {
     var snapshot: GameSnapshot
         private set
+
+    /** Время по умолчанию — через час после старта, чтобы выходы не были ранними. */
+    fun later(minutes: Int = 61) = clock.advance(kotlin.time.Duration.parse("${minutes}m"))
 
     init {
         val change = Commands.startGame(
@@ -48,6 +53,14 @@ class TestTable(
         apply(Commands.buyIn(snapshot, id(name), chips, payment, clock.stamp()))
 
     fun pay(name: String, amount: Long): GameChange = apply(Commands.pay(snapshot, id(name), amount, clock.stamp()))
+
+    fun cashOut(
+        name: String,
+        chips: Long,
+        tip: Tip? = null,
+        settlement: SettlementChoice = SettlementChoice.Full,
+        early: Boolean = false,
+    ): GameChange = apply(Commands.cashOut(snapshot, id(name), chips, tip, settlement, early, clock.stamp()))
 
     fun payOut(name: String, amount: Long): GameChange =
         apply(Commands.payOut(snapshot, id(name), amount, clock.stamp()))

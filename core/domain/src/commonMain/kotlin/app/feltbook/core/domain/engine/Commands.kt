@@ -127,6 +127,42 @@ object Commands {
         return single(snapshot, stamp, EntryType.PAYOUT, playerId, amount, bankerName)
     }
 
+    /**
+     * Выход: две операции в одном изменении (каждую можно отменить отдельно):
+     * 1) CASH_OUT(F, earlyExit) + TIP | TIP_CHIPS — «Выход»;
+     * 2) PAYMENT | PAYOUT по [settlement] — «Расчёт» (нет записи при None или balance = 0).
+     * Ранний выход без `earlyExitConfirmed` — EarlyExitNotConfirmed.
+     */
+    @Suppress("LongParameterList")
+    fun cashOut(
+        snapshot: GameSnapshot,
+        playerId: PlayerId,
+        chips: Long,
+        tip: Tip?,
+        settlement: SettlementChoice,
+        earlyExitConfirmed: Boolean,
+        stamp: Stamp,
+    ): GameChange {
+        val quote = CashOuts.quote(snapshot, playerId, chips, tip, stamp.at)
+        quote.blockers.throwFirst()
+        if (quote.isEarlyExit && !earlyExitConfirmed) {
+            violation(DomainError.EarlyExitNotConfirmed(quote.minutesPlayed ?: 0L, snapshot.game.rules.minPlayMinutes))
+        }
+        val settled = settledAmount(quote.balance, settlement)
+        val writer = EntryWriter(snapshot, stamp)
+        val exit = writer.operation()
+        writer.add(exit, EntryType.CASH_OUT, playerId, chips, earlyExit = quote.isEarlyExit)
+        if (tip != null) {
+            val type = if (quote.tipAsChips) EntryType.TIP_CHIPS else EntryType.TIP
+            writer.add(exit, type, playerId, tip.amount, counterparty = (tip.to as? TipTarget.ToPlayer)?.playerId)
+        }
+        if (settled > 0) {
+            val type = if (quote.balance > 0) EntryType.PAYOUT else EntryType.PAYMENT
+            writer.add(writer.operation(), type, playerId, settled)
+        }
+        return GameChange(gameId = snapshot.game.id, entries = writer.entries)
+    }
+
     /** «Завершить игру»: RUNNING → SETTLING. */
     fun finish(snapshot: GameSnapshot): GameChange = transition(snapshot, GameStatus.RUNNING, GameStatus.SETTLING)
 
@@ -198,6 +234,22 @@ object Commands {
     private val SETTLE_STATUSES = setOf(GameStatus.RUNNING, GameStatus.SETTLING, GameStatus.CLOSED)
     private val EDITABLE_STATUSES =
         setOf(GameStatus.CREATED, GameStatus.RUNNING, GameStatus.SETTLING, GameStatus.CLOSED)
+}
+
+/** Сумма денежной записи расчёта при выходе (0 — записи нет). */
+private fun settledAmount(balance: Long, settlement: SettlementChoice): Long {
+    val full = if (balance < 0) -balance else balance
+    return when (settlement) {
+        SettlementChoice.Full -> full
+
+        SettlementChoice.None -> 0L
+
+        is SettlementChoice.Partial -> {
+            if (full == 0L) violation(DomainError.NothingToSettle)
+            if (settlement.amount !in 1 until full) violation(DomainError.PartialOutOfRange(full - 1))
+            settlement.amount
+        }
+    }
 }
 
 internal fun requireStatus(snapshot: GameSnapshot, allowed: Set<GameStatus>) {
