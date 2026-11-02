@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Калькулятор шансов (m3-ui-spec §5.14, §11.15). Плюрали игроков и аутов — в :core:ui (players_word, against_players, outs_count). -->
+<resources>
+    <string name="odds_title">Калькулятор шансов</string>
+    <string name="odds_subtitle">♠︎ СЕКРЕТНЫЙ СТОЛ</string>
+    <string name="odds_back">Назад к настройкам</string>
+    <string name="odds_reset">Сбросить</string>
+    <string name="odds_my_cards">Мои карты</string>
+    <string name="odds_board_preflop">Стол · префлоп</string>
+    <string name="odds_board_flop">Стол · флоп</string>
+    <string name="odds_board_turn">Стол · тёрн</string>
+    <string name="odds_board_river">Стол · ривер</string>
+    <string name="odds_add_flop">Добавить флоп</string>
+    <string name="odds_add_turn">Добавить тёрн</string>
+    <string name="odds_add_river">Добавить ривер</string>
+    <string name="odds_add_flop_label">+ флоп</string>
+    <string name="odds_slot_plus">+</string>
+    <string name="odds_pick_hole">Выбрать свою карту</string>
+    <string name="odds_change_card">изменить карту</string>
+    <string name="odds_fewer_players">Меньше игроков</string>
+    <string name="odds_more_players">Больше игроков</string>
+    <string name="odds_minus_glyph">−</string>
+    <string name="odds_plus_glyph">+</string>
+    <string name="odds_pot">Банк</string>
+    <string name="odds_bet">Ставка</string>
+    <string name="odds_pot_hint">банк до вашего колла</string>
+    <string name="odds_bet_hint">сколько нужно уравнять</string>
+    <string name="odds_amount_edit">изменить сумму</string>
+    <string name="odds_done">Готово</string>
+    <string name="odds_position">Позиция</string>
+    <string name="odds_win_chance">Шанс выиграть %1$s</string>
+    <string name="odds_exact">точно</string>
+    <string name="odds_legend_win">● победа %1$s</string>
+    <string name="odds_legend_tie">● ничья %1$s</string>
+    <string name="odds_legend_lose">● проигрыш %1$s</string>
+    <string name="odds_bar_a11y">Победа %1$s процента, ничья %2$s, проигрыш %3$s</string>
+    <string name="odds_need_hole">Выберите две свои карты — шансы посчитаются сразу</string>
+    <string name="odds_need_board">Доберите флоп: на столе бывает 0, 3, 4 или 5 карт</string>
+    <string name="odds_too_many_dead">Мёртвых карт слишком много, чтобы раздать всем игрокам</string>
+    <string name="odds_pot_odds">Шансы банка</string>
+    <string name="odds_pot_needed">нужно %1$s</string>
+    <string name="odds_call_ok">колл окупается</string>
+    <string name="odds_call_bad">колл не окупается</string>
+    <string name="odds_call_ok_a11y">Колл окупается по шансам банка</string>
+    <string name="odds_call_bad_a11y">Колл не окупается</string>
+    <string name="odds_call_no_equity">сначала выберите карты</string>
+    <string name="odds_pot_missing">введите банк и ставку</string>
+    <string name="odds_outs_title">%1$s · %2$s</string>
+    <string name="odds_outs_value">%1$s / %2$s</string>
+    <string name="odds_outs_hint">тёрн / к риверу · ≈%1$s по 2 и 4</string>
+    <string name="odds_outs_hint_turn">к риверу · ≈%1$s по правилу 2</string>
+    <string name="odds_outs_kind">%1$s %2$d</string>
+    <string name="odds_outs_separator">" · "</string>
+    <string name="odds_outs_none">Аутов нет</string>
+    <string name="odds_outs_none_hint">следующая карта не усилит комбинацию</string>
+    <string name="odds_draw_flush">Флеш-дро</string>
+    <string name="odds_draw_straight">Стрит-дро</string>
+    <string name="odds_draw_gutshot">Гатшот</string>
+    <string name="odds_draw_set">На сет</string>
+    <string name="odds_draw_pair">На пару</string>
+    <string name="odds_draw_two_pair">На две пары</string>
+    <string name="odds_draw_full_house">На фулл-хаус</string>
+    <string name="odds_draw_quads">На каре</string>
+    <string name="odds_draw_straight_flush">На стрит-флеш</string>
+    <string name="odds_status">Сейчас: %1$s · %2$s раздач · офлайн</string>
+    <string name="odds_status_exact">Сейчас: %1$s · точный перебор · офлайн</string>
+    <string name="odds_calculating">считаем…</string>
+    <string name="odds_status_calculating">Сейчас: %1$s · считаем… · офлайн</string>
+    <string name="odds_status_hand">Сейчас: %1$s · офлайн</string>
+    <string name="odds_hand_strength">Сила руки · %1$s</string>
+    <string name="odds_top_percent">топ %1$s рук</string>
+    <string name="odds_guide">ориентир с %1$s: топ %2$s · %3$s</string>
+    <string name="odds_guide_in">рука входит</string>
+    <string name="odds_guide_out">рука не входит</string>
+    <string name="odds_card_picker">Выберите карту</string>
+    <string name="odds_picker_tab_card">Карта</string>
+    <string name="odds_dead_cards">Мёртвые карты</string>
+    <string name="odds_dead_none">нет</string>
+    <string name="odds_dead_hint">известные выбывшие карты — необязательно</string>
+    <string name="odds_remove_card">Убрать карту</string>
+    <string name="odds_clear_dead">Очистить</string>
+    <string name="odds_card_unavailable">занята</string>
+    <string name="odds_card_name">%1$s %2$s</string>
+    <string name="odds_card_short">%1$s%2$s</string>
+    <string name="odds_rank_ten">10</string>
+    <string name="odds_memo_title">Памятка: кто есть кто</string>
+    <string name="odds_memo_hint">по часовой от дилера</string>
+    <string name="odds_memo_utg">«под прицелом» — первый после блайндов, самая ранняя</string>
+    <string name="odds_memo_utg_plus">ранняя позиция, сразу после UTG</string>
+    <string name="odds_memo_mp">середина стола, между UTG и CO</string>
+    <string name="odds_memo_co">«катофф» — сразу перед дилером, поздняя</string>
+    <string name="odds_memo_btn">баттон, дилер — после флопа ходит последним, лучшая</string>
+    <string name="odds_memo_sb_btn">дилер и малый блайнд вдвоём: на префлопе ходит первым, после флопа — последним</string>
+    <string name="odds_memo_sb">малый блайнд, слева от дилера</string>
+    <string name="odds_memo_bb">большой блайнд — на префлопе ходит последним</string>
+    <string name="odds_memo_footer">Чем позже позиция, тем больше видно чужих решений — и тем шире обычно разыгрывают руки.</string>
+    <!-- Комбинации (текущая рука и виды аутов): -->
+    <string name="odds_hand_high_card">старшая карта, %1$s</string>
+    <string name="odds_hand_pair">пара</string>
+    <string name="odds_hand_two_pair">две пары</string>
+    <string name="odds_hand_set">сет</string>
+    <string name="odds_hand_straight">стрит</string>
+    <string name="odds_hand_flush">флеш</string>
+    <string name="odds_hand_full_house">фулл-хаус</string>
+    <string name="odds_hand_quads">каре</string>
+    <string name="odds_hand_straight_flush">стрит-флеш</string>
+    <!-- Ранги от двойки до туза: именительный (для TalkBack «Туз пик») и строчные для «старшая карта, туз». -->
+    <string-array name="odds_rank_names">
+        <item>Двойка</item>
+        <item>Тройка</item>
+        <item>Четвёрка</item>
+        <item>Пятёрка</item>
+        <item>Шестёрка</item>
+        <item>Семёрка</item>
+        <item>Восьмёрка</item>
+        <item>Девятка</item>
+        <item>Десятка</item>
+        <item>Валет</item>
+        <item>Дама</item>
+        <item>Король</item>
+        <item>Туз</item>
+    </string-array>
+    <string-array name="odds_rank_names_lower">
+        <item>двойка</item>
+        <item>тройка</item>
+        <item>четвёрка</item>
+        <item>пятёрка</item>
+        <item>шестёрка</item>
+        <item>семёрка</item>
+        <item>восьмёрка</item>
+        <item>девятка</item>
+        <item>десятка</item>
+        <item>валет</item>
+        <item>дама</item>
+        <item>король</item>
+        <item>туз</item>
+    </string-array>
+    <!-- Порядок мастей: пики, черви, бубны, трефы. -->
+    <string-array name="odds_suit_names_genitive">
+        <item>пик</item>
+        <item>червей</item>
+        <item>бубен</item>
+        <item>треф</item>
+    </string-array>
+</resources>

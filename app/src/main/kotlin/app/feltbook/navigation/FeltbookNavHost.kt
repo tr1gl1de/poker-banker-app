@@ -28,6 +28,7 @@ import app.feltbook.feature.history.debtsScreen
 import app.feltbook.feature.history.historyScreens
 import app.feltbook.feature.settings.OddsRoute
 import app.feltbook.feature.settings.SettingsRoute
+import app.feltbook.feature.settings.odds.oddsScreen
 import app.feltbook.feature.settings.settingsScreens
 import app.feltbook.feature.settlement.SettlementRoute
 import app.feltbook.feature.settlement.settlementScreen
@@ -169,11 +170,7 @@ fun FeltbookNavHost(navController: NavHostController, modifier: Modifier = Modif
                 onOpenOdds = { navController.navigate(OddsRoute) { launchSingleTop = true } },
                 onOpenHistory = { navController.openTab(Tab.HISTORY, current = Tab.SETTINGS) },
             )
-            composable<OddsRoute> {
-                PlaceholderScreen(title = stringResource(R.string.placeholder_odds), onBack = {
-                    navController.popBackStack()
-                })
-            }
+            oddsScreen(onBack = { navController.popBackStack() })
         }
     }
 }

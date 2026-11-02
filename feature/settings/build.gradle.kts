@@ -17,4 +17,6 @@ kotlin {
 dependencies {
     // String.toUri() для документов SAF.
     implementation(libs.androidx.core.ktx)
+    // Калькулятор шансов (пасхалка, M6.2).
+    implementation(projects.core.odds)
 }
