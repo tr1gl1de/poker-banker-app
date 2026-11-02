@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dev-сборка ставится рядом с release (applicationIdSuffix .dev). -->
+    <string name="app_name" translatable="false">Feltbook dev</string>
+</resources>

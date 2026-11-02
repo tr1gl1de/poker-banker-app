@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Feltbook</string>
+    <string name="brand_title" translatable="false">Feltbook</string>
+    <string name="brand_tagline">банк покерного стола</string>
+</resources>

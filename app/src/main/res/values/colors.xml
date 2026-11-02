@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Только для окна до старта Compose; в коде цвета — из FeltbookColors. -->
+    <color name="felt_deep">#FF071A14</color>
+</resources>

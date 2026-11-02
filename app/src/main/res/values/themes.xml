@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Окно до первого кадра Compose: тёмное сукно feltDeep, без белой вспышки. -->
+    <style name="Theme.Feltbook" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/felt_deep</item>
+    </style>
+</resources>

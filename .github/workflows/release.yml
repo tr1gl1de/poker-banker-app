@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      FELTBOOK_KEYSTORE_BASE64: ${{ secrets.FELTBOOK_KEYSTORE_BASE64 }}
+      FELTBOOK_KEYSTORE_PASSWORD: ${{ secrets.FELTBOOK_KEYSTORE_PASSWORD }}
+      FELTBOOK_KEY_ALIAS: ${{ secrets.FELTBOOK_KEY_ALIAS }}
+      FELTBOOK_KEY_PASSWORD: ${{ secrets.FELTBOOK_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-read-only: true
+
+      - name: Android SDK 37
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+
+      - name: Keystore
+        id: keystore
+        run: |
+          if [ -n "$FELTBOOK_KEYSTORE_BASE64" ]; then
+            echo "$FELTBOOK_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/feltbook.jks"
+            echo "FELTBOOK_KEYSTORE_FILE=$RUNNER_TEMP/feltbook.jks" >> "$GITHUB_ENV"
+            echo "suffix=" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Секреты подписи не заданы — release собирается без подписи"
+            echo "suffix=-unsigned" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release APK and AAB
+        run: |
+          tag=""
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then tag="$GITHUB_REF_NAME"; fi
+          ./gradlew assembleRelease bundleRelease "-Pfeltbook.releaseTag=$tag" --stacktrace
+          ./gradlew -q :app:printVersion | tee version.txt
+          version=$(grep '^versionName=' version.txt | cut -d= -f2)
+          suffix="${{ steps.keystore.outputs.suffix }}"
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release*.apk "dist/feltbook-$version$suffix.apk"
+          cp app/build/outputs/bundle/release/app-release.aab "dist/feltbook-$version$suffix.aab"
+          echo "### Feltbook $version$suffix" >> "$GITHUB_STEP_SUMMARY"
+          ls dist >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: feltbook-release
+          path: dist/
+          if-no-files-found: error
+
+      - name: GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "Feltbook $GITHUB_REF_NAME" --generate-notes --verify-tag

@@ -1,0 +1,56 @@
+# Поверх конфигурации detekt по умолчанию (buildUponDefaultConfig = true).
+# Ослаблены только правила, мешающие Compose; остальное — по умолчанию.
+
+naming:
+  FunctionNaming:
+    # @Composable-функции называются с заглавной буквы.
+    ignoreAnnotated:
+      - Composable
+  TopLevelPropertyNaming:
+    constantPattern: "[A-Z][A-Z0-9_]*"
+    # Токены темы (FeltbookDarkColors, ChipColors) — PascalCase, как в Compose.
+    propertyPattern: "[A-Za-z][A-Za-z0-9]*"
+    privatePropertyPattern: "_?[A-Za-z][A-Za-z0-9]*"
+
+complexity:
+  LongParameterList:
+    ignoreAnnotated:
+      - Composable
+    ignoreDefaultParameters: true
+    # Наборы токенов (FeltbookColors) — data class с десятками полей.
+    constructorThreshold: 40
+  LongMethod:
+    ignoreAnnotated:
+      - Composable
+  TooManyFunctions:
+    ignorePrivate: true
+    ignoreAnnotatedFunctions:
+      - Composable
+      - Preview
+    excludes:
+      - '**/test/**'
+      - '**/commonTest/**'
+      - '**/jvmTest/**'
+      - '**/androidTest/**'
+
+style:
+  UnusedPrivateMember:
+    # @Preview-функции вызываются только инструментами IDE.
+    ignoreAnnotated:
+      - Preview
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreNamedArgument: true
+    excludes:
+      - '**/test/**'
+      - '**/commonTest/**'
+      - '**/jvmTest/**'
+      - '**/androidTest/**'
+      - '**/*.kts'
+      # Токены темы — это и есть числа (hex-цвета, sp, dp).
+      - '**/core/ui/**/theme/**'
+  MaxLineLength:
+    maxLineLength: 120
+  WildcardImport:
+    active: true
