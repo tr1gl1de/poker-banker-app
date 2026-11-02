@@ -2,7 +2,10 @@ package app.feltbook.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -15,8 +18,16 @@ import app.feltbook.feature.game.navigation.NewGameRoute
 import app.feltbook.feature.game.navigation.TableRoute
 import app.feltbook.feature.game.navigation.gameScreens
 import app.feltbook.feature.handover.HandoverScreen
-import app.feltbook.feature.history.HistoryScreen
-import app.feltbook.feature.settings.SettingsScreen
+import app.feltbook.feature.history.DebtsRoute
+import app.feltbook.feature.history.GameDetailRoute
+import app.feltbook.feature.history.HistoryNavigator
+import app.feltbook.feature.history.HistoryRoute
+import app.feltbook.feature.history.StatsRoute
+import app.feltbook.feature.history.debtsScreen
+import app.feltbook.feature.history.historyScreens
+import app.feltbook.feature.settings.OddsRoute
+import app.feltbook.feature.settings.SettingsRoute
+import app.feltbook.feature.settings.settingsScreens
 import app.feltbook.feature.settlement.SettlementRoute
 import app.feltbook.feature.settlement.settlementScreen
 
@@ -42,7 +53,10 @@ fun NavHostController.openTab(tab: Tab, current: Tab?) {
     }
 }
 
-private fun NavHostController.gameNavigator(onOpenHistory: () -> Unit): GameNavigator = object : GameNavigator {
+private fun NavHostController.gameNavigator(
+    onOpenHistory: () -> Unit,
+    onOpenGameDetail: (String) -> Unit,
+): GameNavigator = object : GameNavigator {
     override fun openNewGame() = navigate(NewGameRoute) { launchSingleTop = true }
 
     override fun openTable(gameId: String) = navigate(TableRoute(gameId)) { launchSingleTop = true }
@@ -54,7 +68,7 @@ private fun NavHostController.gameNavigator(onOpenHistory: () -> Unit): GameNavi
 
     override fun openHistory() = onOpenHistory()
 
-    override fun openGameDetail(gameId: String) = navigate(GameDetailRoute(gameId))
+    override fun openGameDetail(gameId: String) = onOpenGameDetail(gameId)
 
     override fun openDebts() = navigate(DebtsRoute) { launchSingleTop = true }
 
@@ -71,12 +85,51 @@ private fun NavHostController.gameNavigator(onOpenHistory: () -> Unit): GameNavi
     }
 }
 
+/**
+ * Переходы экранов истории, статистики и долгов. Карточка игры живёт в графе «История» (там же snackbar отмены
+ * удаления), поэтому из вкладки «Игра» (Главная, Долги) открывается вкладка «История» с карточкой поверх.
+ */
+private fun NavHostController.historyNavigator(): HistoryNavigator = object : HistoryNavigator {
+    private fun inHistory(): Boolean = currentBackStackEntry?.destination?.hierarchy?.any {
+        it.hasRoute<HistoryGraph>()
+    } == true
+
+    override fun openGameDetail(gameId: String) {
+        if (!inHistory()) openTab(Tab.HISTORY, current = Tab.GAME)
+        navigate(GameDetailRoute(gameId))
+    }
+
+    override fun openStats() = navigate(StatsRoute) { launchSingleTop = true }
+
+    override fun openDebts() {
+        if (inHistory()) openTab(Tab.GAME, current = Tab.HISTORY)
+        navigate(DebtsRoute) { launchSingleTop = true }
+    }
+
+    override fun openTable(gameId: String) {
+        openTab(Tab.GAME, current = Tab.HISTORY)
+        navigate(TableRoute(gameId)) { launchSingleTop = true }
+    }
+
+    override fun gameDeleted() {
+        if (!popBackStack<HistoryRoute>(inclusive = false)) openTab(Tab.HISTORY, current = null)
+    }
+
+    override fun back() {
+        popBackStack()
+    }
+}
+
 /** Граф приложения (m3-ui-spec §8.1); шторки — состояние экранов, не маршруты. */
 @Composable
 fun FeltbookNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    val navigator = navController.gameNavigator(onOpenHistory = {
-        navController.openTab(Tab.HISTORY, current = Tab.GAME)
-    })
+    val history = navController.historyNavigator()
+    val navigator = navController.gameNavigator(
+        onOpenHistory = { navController.openTab(Tab.HISTORY, current = Tab.GAME) },
+        onOpenGameDetail = history::openGameDetail,
+    )
+    val context = LocalContext.current
+    val versionName = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     NavHost(navController = navController, startDestination = GameGraph, modifier = modifier) {
         navigation<GameGraph>(startDestination = HomeRoute) {
             gameScreens(navigator)
@@ -94,11 +147,7 @@ fun FeltbookNavHost(navController: NavHostController, modifier: Modifier = Modif
                     }
                 },
             )
-            composable<DebtsRoute> {
-                PlaceholderScreen(title = stringResource(R.string.placeholder_debts), onBack = {
-                    navController.popBackStack()
-                })
-            }
+            debtsScreen(history)
             composable<HandoverRoute> {
                 PlaceholderScreen(title = stringResource(R.string.placeholder_handover), onBack = {
                     navController.popBackStack()
@@ -108,18 +157,18 @@ fun FeltbookNavHost(navController: NavHostController, modifier: Modifier = Modif
             }
         }
         navigation<HistoryGraph>(startDestination = HistoryRoute) {
-            composable<HistoryRoute> {
-                PlaceholderScreen(title = stringResource(R.string.nav_history)) { HistoryScreen() }
-            }
-            composable<GameDetailRoute> {
-                PlaceholderScreen(title = stringResource(R.string.placeholder_game_detail), onBack = {
-                    navController.popBackStack()
-                })
-            }
+            historyScreens(history)
         }
         navigation<SettingsGraph>(startDestination = SettingsRoute) {
-            composable<SettingsRoute> {
-                PlaceholderScreen(title = stringResource(R.string.nav_settings)) { SettingsScreen() }
+            settingsScreens(
+                versionName = versionName,
+                onOpenOdds = { navController.navigate(OddsRoute) { launchSingleTop = true } },
+                onOpenHistory = { navController.openTab(Tab.HISTORY, current = Tab.SETTINGS) },
+            )
+            composable<OddsRoute> {
+                PlaceholderScreen(title = stringResource(R.string.placeholder_odds), onBack = {
+                    navController.popBackStack()
+                })
             }
         }
     }

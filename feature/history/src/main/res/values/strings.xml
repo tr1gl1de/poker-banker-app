@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- История (m3-ui-spec §11.13) -->
+    <string name="history_title">История</string>
+    <string name="history_stats">Статистика</string>
+    <string name="history_selected">Выбрано %1$d</string>
+    <string name="history_clear_selection">Снять выбор</string>
+    <string name="history_delete">Удалить</string>
+    <string name="history_filter_all">Все</string>
+    <string name="history_filter_month">Месяц</string>
+    <string name="history_filter_year">Год</string>
+    <string name="history_row_title">%1$s · %2$s</string>
+    <string name="history_turnover">оборот %1$s</string>
+    <string name="history_rake">рейк %1$s</string>
+    <string name="history_meta_edited">" · изменено после закрытия"</string>
+    <string name="history_meta_handed_over">" · передана"</string>
+    <string name="history_meta_debt">" · долг"</string>
+    <string name="history_checked">Выбрано</string>
+    <string name="history_unchecked">Не выбрано</string>
+    <string name="history_select_a11y">Выбрать</string>
+    <string name="history_empty">Сыгранные игры появятся здесь</string>
+    <plurals name="history_delete_title">
+        <item quantity="one">Удалить %1$d игру?</item>
+        <item quantity="few">Удалить %1$d игры?</item>
+        <item quantity="many">Удалить %1$d игр?</item>
+        <item quantity="other">Удалить %1$d игры?</item>
+    </plurals>
+    <string name="history_delete_body_many">Журналы, расчёты и статистика этих игр исчезнут с телефона. Отменить можно 5 секунд.</string>
+    <string name="history_delete_body_one">Журнал, расчёт и статистика этой игры исчезнут с телефона. Отменить можно 5 секунд.</string>
+    <string name="history_delete_keep">Оставить</string>
+    <plurals name="history_delete_confirm">
+        <item quantity="one">Удалить %1$d игру</item>
+        <item quantity="few">Удалить %1$d игры</item>
+        <item quantity="many">Удалить %1$d игр</item>
+        <item quantity="other">Удалить %1$d игры</item>
+    </plurals>
+    <plurals name="history_deleted_snackbar">
+        <item quantity="one">Удалена %1$d игра</item>
+        <item quantity="few">Удалено %1$d игры</item>
+        <item quantity="many">Удалено %1$d игр</item>
+        <item quantity="other">Удалено %1$d игры</item>
+    </plurals>
+
+    <!-- Карточка игры [без макета] -->
+    <string name="game_detail_menu_a11y">Ещё: поделиться, переоткрыть, удалить</string>
+    <string name="game_detail_menu_share">Поделиться итогом</string>
+    <string name="game_detail_menu_reopen">Переоткрыть для исправления</string>
+    <string name="game_detail_menu_delete">Удалить игру…</string>
+    <string name="game_detail_reopen_title">Переоткрыть игру?</string>
+    <string name="game_detail_reopen_body">Игра снова станет активной и получит пометку «изменено после закрытия».</string>
+    <string name="game_detail_reopen_confirm">Переоткрыть</string>
+    <string name="game_detail_chips_ok">Фишки сошлись: выдано %1$s = сдано %2$s</string>
+    <string name="game_detail_chips_diff">Фишки не сошлись: выдано %1$s, сдано %2$s (%3$s)</string>
+    <string name="game_detail_rake">♣︎ Заведению · рейк</string>
+    <string name="game_detail_banker">♥︎ Банкиру</string>
+    <string name="game_detail_expected_cash">♦︎ Должно быть в кассе</string>
+    <string name="game_detail_unpaid">Не оплачено</string>
+    <string name="game_detail_players">Расчёт с игроками</string>
+    <string name="game_detail_row_meta">начислено %1$s · оплачено %2$s · вывод %3$s</string>
+    <string name="game_detail_row_paid">заплатил %1$s ✓</string>
+    <string name="game_detail_row_received">получил %1$s ✓</string>
+    <string name="game_detail_row_even">квиты</string>
+    <string name="game_detail_row_debt">долг %1$s</string>
+    <string name="game_detail_row_banker_owes">банкир должен %1$s</string>
+    <string name="game_detail_share_header">Feltbook · %1$s · %2$s</string>
+    <string name="game_detail_share_pays">%1$s платит %2$s</string>
+    <string name="game_detail_share_gets">%1$s получает %2$s</string>
+    <string name="game_detail_share_even">%1$s — квиты</string>
+    <string name="game_detail_share_totals">Рейк заведению %1$s · Банкиру %2$s</string>
+
+    <!-- Полный журнал игры (как m3-ui-spec §11.8, с именем игрока) -->
+    <string name="detail_journal_title">Журнал</string>
+    <string name="detail_journal_hold_hint">удержите запись, чтобы отменить</string>
+    <string name="detail_journal_empty">Записей нет</string>
+    <string name="detail_journal_row_player">%1$s · %2$s</string>
+    <string name="detail_journal_buy_in_first">Закуп %1$s</string>
+    <string name="detail_journal_buy_in_rebuy">Докуп %1$s</string>
+    <string name="detail_journal_status_debt">" · в долг"</string>
+    <string name="detail_journal_status_paid">" · оплачено"</string>
+    <string name="detail_journal_status_partial">" · частично"</string>
+    <string name="detail_journal_sub_rake_percent">↳ рейк %1$s</string>
+    <string name="detail_journal_sub_rake">↳ рейк</string>
+    <string name="detail_journal_sub_fee">↳ сбор банкира</string>
+    <string name="detail_journal_sub_payment">↳ оплачено</string>
+    <string name="detail_journal_sub_tip_banker">↳ чаевые банкиру</string>
+    <string name="detail_journal_sub_tip_player">↳ чаевые: %1$s</string>
+    <string name="detail_journal_payment">Оплата</string>
+    <string name="detail_journal_payout">Выплачено</string>
+    <string name="detail_journal_settlement_received">Расчёт при выходе · получено</string>
+    <string name="detail_journal_settlement_paid_out">Расчёт при выходе · выплачено</string>
+    <string name="detail_journal_cash_out">Выход · %1$s</string>
+    <string name="detail_journal_cash_out_early">" · ранний"</string>
+    <string name="detail_journal_forgiven">Долг прощён</string>
+    <string name="detail_journal_rake_paid">Рейк отдан заведению</string>
+    <string name="detail_journal_income_taken">Доход забран: %1$s</string>
+    <string name="detail_journal_handover">Игра принята от: %1$s</string>
+    <string name="detail_journal_banker_suffix">" · %1$s"</string>
+    <string name="detail_journal_reversed">отменено</string>
+    <string name="detail_journal_reverse_action_a11y">Отменить запись</string>
+    <string name="detail_journal_reverse_title">Отменить «%1$s»?</string>
+    <string name="detail_journal_reverse_body">Запись останется в журнале с пометкой «Отменено», суммы пересчитаются.</string>
+    <string name="detail_journal_reverse_reason">Причина (необязательно)</string>
+    <string name="detail_journal_reverse_keep">Оставить</string>
+    <string name="detail_journal_reverse_confirm">Отменить запись</string>
+    <string name="detail_journal_reversed_snackbar">Запись отменена</string>
+    <string name="detail_journal_not_reversible_already">Эта запись уже отменена</string>
+    <string name="detail_journal_not_reversible_reversal">Отмену нельзя отменить — повторите операцию</string>
+    <string name="detail_journal_not_reversible_income">Часть акта передачи — не отменяется</string>
+    <string name="detail_journal_not_reversible_read_only">Игра передана — только чтение</string>
+    <string name="detail_journal_not_reversible_closed">Чтобы исправить, переоткройте игру</string>
+    <string name="detail_journal_not_reversible_later_purchases">Сначала отмените более поздние докупы</string>
+    <string name="detail_journal_not_reversible_tip_recipient">Сначала отмените выход получателя чаевых</string>
+
+    <!-- Статистика -->
+    <string name="stats_title">Статистика</string>
+    <string name="stats_back">Назад к истории</string>
+    <string name="stats_period_month">За месяц</string>
+    <string name="stats_period_3_months">За 3 месяца</string>
+    <string name="stats_period_year">За год</string>
+    <string name="stats_period_all">За всё время</string>
+    <string name="stats_period_chip">%1$s ▾</string>
+    <string name="stats_games">Игр</string>
+    <string name="stats_turnover">Оборот фишек</string>
+    <string name="stats_rake">♣︎ Рейк заведению</string>
+    <string name="stats_banker_income">♥︎ Доход банкира</string>
+    <string name="stats_chart_a11y">Доход банкира по играм: %1$s</string>
+    <string name="stats_chart_point_a11y">%1$s — %2$s</string>
+    <plurals name="stats_chart_title">
+        <item quantity="one">Доход банкира, последняя %1$d игра</item>
+        <item quantity="few">Доход банкира, последние %1$d игры</item>
+        <item quantity="many">Доход банкира, последние %1$d игр</item>
+        <item quantity="other">Доход банкира, последние %1$d игры</item>
+    </plurals>
+    <string name="stats_players">Игроки</string>
+    <string name="stats_players_hint">результат в фишках</string>
+    <string name="stats_empty">За этот период закрытых игр нет</string>
+    <string name="stats_player_meta">%1$s · %2$s докупа за игру</string>
+    <string name="stats_player_games">Игр</string>
+    <string name="stats_player_result">Результат</string>
+    <string name="stats_player_avg_buy_in">Средний закуп</string>
+    <string name="stats_player_rebuys">Докупов за игру</string>
+    <string name="stats_player_debt">Долг</string>
+    <string name="stats_player_debt_since">с %1$s</string>
+    <string name="stats_player_open_debts">Открытые долги</string>
+    <string name="stats_player_last">Последняя игра %1$s</string>
+    <string name="stats_player_alias">Объединён: %1$s</string>
+    <string name="stats_player_merge">Объединить с…</string>
+    <string name="stats_player_unmerge">Разъединить</string>
+    <string name="stats_merge_pick_title">Объединить «%1$s» с…</string>
+    <string name="stats_merge_none">Других имён нет</string>
+    <string name="stats_merge_title">Объединить «%1$s» с «%2$s»?</string>
+    <string name="stats_merge_body">Статистика и долги будут считаться вместе. Разъединить можно позже.</string>
+    <string name="stats_merge_confirm">Объединить</string>
+    <string name="stats_merged_snackbar">«%1$s» объединён с «%2$s»</string>
+    <string name="stats_unmerged_snackbar">«%1$s» отделён от «%2$s»</string>
+
+    <!-- Открытые долги (m3-ui-spec §11.11) и шторка «Погасить» (§11.8) -->
+    <string name="debts_title">Открытые долги</string>
+    <string name="debts_owed_to_you">Вам должны</string>
+    <string name="debts_summary_meta">%1$s · %2$s</string>
+    <string name="debts_meta">%1$s · %2$s · %3$s</string>
+    <string name="debts_today">сегодня</string>
+    <string name="debts_partial">отдал %1$s из %2$s</string>
+    <string name="debts_pay">Погасить</string>
+    <string name="debts_pay_a11y">Погасить: %1$s, %2$s</string>
+    <string name="debts_open_game_a11y">Открыть игру</string>
+    <string name="debts_forgive">Простить…</string>
+    <string name="debts_footer">Погашение записывается в ту игру, где возник долг. «Простить» спросит подтверждение и уменьшит доход банкира той игры.</string>
+    <string name="debts_empty">Долгов нет — все рассчитались</string>
+    <string name="debts_forgive_title">Простить долг %1$s?</string>
+    <string name="debts_forgive_body">Долг закроется без денег, доход банкира игры «%1$s» уменьшится на %2$s. В журнале останется запись.</string>
+    <string name="debts_forgive_keep">Оставить долг</string>
+    <string name="debts_forgive_confirm">Простить %1$s</string>
+    <string name="debts_forgiven_snackbar">Долг прощён</string>
+    <string name="debts_paid_snackbar">%1$s погасил %2$s</string>
+    <string name="debts_no_debt">Долга уже нет</string>
+    <string name="debts_pay_title">Погасить · %1$s</string>
+    <string name="debts_pay_subtitle">%1$s · %2$s · долг %3$s</string>
+    <string name="debts_pay_chip_all">весь долг</string>
+    <string name="debts_pay_chip_half">половина</string>
+    <string name="debts_pay_row_debt_now">Долг сейчас</string>
+    <string name="debts_pay_row_remaining">Останется</string>
+    <string name="debts_pay_confirm">Принять %1$s</string>
+    <string name="debts_pay_confirm_empty">Введите сумму</string>
+    <string name="debts_pay_exceeds_debt">Больше долга: %1$s</string>
+</resources>

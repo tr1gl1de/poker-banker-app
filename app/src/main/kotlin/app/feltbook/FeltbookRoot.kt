@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,12 +57,13 @@ import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 import app.feltbook.feature.game.navigation.HomeRoute
 import app.feltbook.feature.game.navigation.TableRoute
-import app.feltbook.navigation.DebtsRoute
+import app.feltbook.feature.history.DebtsRoute
+import app.feltbook.feature.history.HistoryRoute
+import app.feltbook.feature.settings.OddsRoute
+import app.feltbook.feature.settings.SettingsRoute
 import app.feltbook.navigation.FeltbookNavHost
 import app.feltbook.navigation.HistoryGraph
-import app.feltbook.navigation.HistoryRoute
 import app.feltbook.navigation.SettingsGraph
-import app.feltbook.navigation.SettingsRoute
 import app.feltbook.navigation.Tab
 import app.feltbook.navigation.openTab
 import kotlinx.coroutines.launch
@@ -203,10 +205,11 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
                                 EasterEggTap.Unlocked -> {
                                     onUnlockOdds()
                                     scope.launch {
-                                        snackbar.showUndoSnackbar(
+                                        val result = snackbar.showUndoSnackbar(
                                             resources.getString(R.string.easter_unlocked),
-                                            actionLabel = null,
+                                            actionLabel = resources.getString(R.string.easter_open),
                                         )
+                                        if (result == SnackbarResult.ActionPerformed) navController.navigate(OddsRoute)
                                     }
                                 }
 
