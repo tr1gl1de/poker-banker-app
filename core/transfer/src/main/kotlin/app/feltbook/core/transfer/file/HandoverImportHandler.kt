@@ -8,10 +8,8 @@ import android.provider.OpenableColumns
 import androidx.core.content.IntentCompat
 import app.feltbook.core.domain.transfer.DecodeResult
 import app.feltbook.core.domain.transfer.FeltbookCodec
-import app.feltbook.core.transfer.PackageFrame
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayOutputStream
-import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import javax.inject.Inject
@@ -77,23 +75,22 @@ class HandoverImportHandler internal constructor(
         IncomingFile(name, result).also(store::put)
     }
 
-    private fun openStream(resolver: ContentResolver, uri: Uri): InputStream? = when (uri.scheme) {
-        ContentResolver.SCHEME_FILE -> uri.path?.let { File(it).inputStream() }
-        else -> resolver.openInputStream(uri)
-    }
+    /**
+     * Только `content://`: путь `file://` из чужого приложения дал бы прочитать любой файл, доступный Feltbook
+     * (его базу), — такие URI отклоняются.
+     */
+    private fun openStream(resolver: ContentResolver, uri: Uri): InputStream? =
+        if (uri.scheme == ContentResolver.SCHEME_CONTENT) resolver.openInputStream(uri) else null
 
-    private fun displayName(resolver: ContentResolver, uri: Uri): String? {
-        if (uri.scheme == ContentResolver.SCHEME_FILE) return uri.lastPathSegment
-        return try {
-            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-                if (cursor.moveToFirst()) cursor.getString(0) else null
-            }
-        } catch (_: SecurityException) {
-            null
-        } catch (_: IllegalArgumentException) {
-            null
-        } ?: uri.lastPathSegment
-    }
+    private fun displayName(resolver: ContentResolver, uri: Uri): String? = try {
+        resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) cursor.getString(0) else null
+        }
+    } catch (_: SecurityException) {
+        null
+    } catch (_: IllegalArgumentException) {
+        null
+    } ?: uri.lastPathSegment
 
     companion object {
         /** Файл из входящего интента, если это «открыть»/«поделиться» файлом. */
@@ -103,10 +100,12 @@ class HandoverImportHandler internal constructor(
             else -> null
         }
 
-        /** Не больше кадра Nearby: больший файл — не наш (или битый). */
+        /** Файл передачи — десятки КБ; больше 4 МБ — не наш (или чужой огромный файл). */
+        const val MAX_FILE_BYTES: Int = 4 * 1024 * 1024
+
         internal fun readLimited(input: InputStream): String? {
-            val bytes = input.readNBytesCompat(PackageFrame.MAX_BODY_BYTES + 1)
-            if (bytes.size > PackageFrame.MAX_BODY_BYTES) return null
+            val bytes = input.readNBytesCompat(MAX_FILE_BYTES + 1)
+            if (bytes.size > MAX_FILE_BYTES) return null
             return try {
                 bytes.decodeToString(throwOnInvalidSequence = true)
             } catch (_: CharacterCodingException) {

@@ -3,6 +3,8 @@ package app.feltbook.feature.handover.receive
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import app.feltbook.core.data.handover.ReceivedTemplateStore
+import app.feltbook.core.domain.engine.BuyInPayment
+import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.Journal
 import app.feltbook.core.domain.engine.JournalItem
 import app.feltbook.core.domain.model.AppSettings
@@ -10,6 +12,7 @@ import app.feltbook.core.domain.model.GameRules
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.RakeMode
+import app.feltbook.core.domain.model.apply
 import app.feltbook.core.domain.transfer.EnvelopeDto
 import app.feltbook.core.domain.transfer.FeltbookCodec
 import app.feltbook.core.transfer.Endpoint
@@ -240,7 +243,7 @@ class ReceiveHandoverViewModelTest {
     }
 
     @Test
-    fun `шаблон после расчёта — правила в «Новую игру», имена — подсказки`() = runTest {
+    fun `шаблон после расчёта — правила и имена только для следующей «Новой игры», настройки не меняются`() = runTest {
         val rules = GameRules(rakeMode = RakeMode.FIXED, rakeValue = 50)
         val s = setup()
         s.receive(Games.templateText(Games.closed(rules)))
@@ -252,9 +255,90 @@ class ReceiveHandoverViewModelTest {
             s.viewModel.onAction(ReceiveAction.Accept)
             assertEquals(ReceiveEvent.TemplateAccepted, awaitItem())
         }
-        assertEquals(rules, s.settings.state.value.rulesForNewGame)
+        assertEquals(GameRules.DEFAULT, s.settings.state.value.rulesForNewGame)
+        assertEquals(rules, s.templates.template.value!!.rules)
         assertEquals(listOf("Андрей", "Дима", "Егор"), s.templates.template.value!!.playerNames)
         assertTrue("acknowledge" in s.session.commands)
         assertTrue(s.repository.games.value.isEmpty())
     }
+
+    // region Ревью M5
+
+    @Test
+    fun `повторный приём уже принятой передачи — без записи, ACK уходит (потерянный ACK)`() = runTest {
+        val prepared = Games.prepared()
+        val text = Games.packageText(prepared)
+        val first = setup(fromFile = IncomingFile(null, FeltbookCodec.decode(text)))
+        first.viewModel.onAction(ReceiveAction.Accept)
+        // Здесь банкир уже сделал запись — журнал ушёл вперёд от пакета.
+        val accepted = first.repository.games.value.values.single()
+        val egor = accepted.players.first { it.name == "Егор" }
+        val moved = accepted.apply(Commands.buyIn(accepted, egor.id, 1_000, BuyInPayment.PAID, Games.stamp()))
+
+        val again = setup(local = listOf(moved))
+        again.receive(text)
+        again.viewModel.events.test {
+            again.viewModel.onAction(ReceiveAction.Accept)
+            assertEquals(ReceiveEvent.GameAccepted(prepared.outgoing.game.id.value.toString()), awaitItem())
+        }
+        assertNull(again.viewModel.uiState.value.error)
+        assertEquals(0, again.repository.commits)
+        assertTrue("acknowledge" in again.session.commands)
+    }
+
+    @Test
+    fun `связь оборвалась на сводке — предупреждение, принять можно, ACK не ждём`() = runTest {
+        val s = setup()
+        val text = Games.packageText(Games.prepared())
+        s.receive(text)
+        assertFalse(s.viewModel.uiState.value.senderDisconnected)
+        s.session.state.value = TransferState.AwaitingAccept(andrey, text, peerConnected = false)
+        assertTrue(s.viewModel.uiState.value.senderDisconnected)
+        assertEquals(ReceivePhase.Review, s.viewModel.uiState.value.phase)
+        s.viewModel.onAction(ReceiveAction.Accept)
+        assertEquals(ReceivePhase.Done, s.viewModel.uiState.value.phase)
+    }
+
+    @Test
+    fun `повторный Activate и скрытие вкладки посреди приёма ничего не сбрасывают`() = runTest {
+        val s = setup()
+        s.viewModel.onAction(ReceiveAction.Activate)
+        s.session.state.value = TransferState.AwaitingCodeConfirm(andrey, "4719", confirmedLocally = false)
+        s.viewModel.onAction(ReceiveAction.Activate)
+        s.viewModel.onAction(ReceiveAction.Deactivate)
+        assertEquals(ReceivePhase.Code("Андрей", "4719", waitingPeer = false), s.viewModel.uiState.value.phase)
+        assertEquals(1, s.session.commands.count { it.startsWith("advertise") })
+        assertFalse("cancel" in s.session.commands)
+
+        s.session.state.value = TransferState.Connected(andrey)
+        s.session.state.value = TransferState.AwaitingAccept(andrey, Games.packageText(Games.prepared()))
+        s.viewModel.onAction(ReceiveAction.Activate)
+        s.viewModel.onAction(ReceiveAction.Deactivate)
+        assertEquals(ReceivePhase.Review, s.viewModel.uiState.value.phase)
+        assertEquals(1, s.session.commands.count { it.startsWith("advertise") })
+        assertFalse("cancel" in s.session.commands)
+
+        val waiting = setup()
+        waiting.viewModel.onAction(ReceiveAction.Activate)
+        waiting.viewModel.onAction(ReceiveAction.Deactivate)
+        assertEquals("cancel", waiting.session.commands.last())
+    }
+
+    @Test
+    fun `разрешения — отказ навсегда и приблизительная геолокация`() = runTest {
+        val blocked = setup(environment = FakeEnvironment(missing = listOf("x")))
+        blocked.viewModel.onAction(ReceiveAction.Activate)
+        blocked.viewModel.onAction(ReceiveAction.PermissionsResult(allGranted = false, permanentlyDenied = true))
+        assertEquals(ReceivePhase.Failed(ReceiveFailure.PERMISSION_BLOCKED), blocked.viewModel.uiState.value.phase)
+
+        val approximate = setup(environment = FakeEnvironment(missing = listOf("x"), approximateOnly = true))
+        approximate.viewModel.onAction(ReceiveAction.Activate)
+        approximate.viewModel.onAction(ReceiveAction.PermissionsResult(allGranted = false))
+        assertEquals(
+            ReceivePhase.Failed(ReceiveFailure.APPROXIMATE_LOCATION),
+            approximate.viewModel.uiState.value.phase,
+        )
+    }
+
+    // endregion
 }

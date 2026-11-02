@@ -106,12 +106,22 @@ fun TableRouteScreen(
             }
         }
     }
-    TableScreen(
-        state = state,
-        onAction = viewModel::onAction,
-        snackbarHostState = snackbar,
-        sheetSnackbarHostState = sheetSnackbar,
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        TableScreen(
+            state = state,
+            onAction = viewModel::onAction,
+            snackbarHostState = snackbar,
+            sheetSnackbarHostState = sheetSnackbar,
+        )
+        // Неподтверждённая передача комнаты: над FAB, пока не ответят «Да, принял» / «Нет, игра у меня».
+        PendingHandoverBanner(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 96.dp),
+        )
+    }
 }
 
 /** Стол (m3-ui-spec §5.3): на телефоне — список и шторки, на ширине ≥ 600 dp — список + карточка игрока. */

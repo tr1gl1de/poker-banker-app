@@ -345,6 +345,13 @@
     <string name="error_no_debt">У игрока нет долга</string>
     <string name="error_forgive_exceeds_debt">Больше долга: %1$s</string>
     <string name="error_stale">Данные обновились — проверьте и повторите</string>
-    <string name="new_game_template_hint">Шаблон от %1$s · игроки: %2$s — посадите их за стол после старта</string>
+    <string name="new_game_template_hint">Шаблон от %1$s: правила уже здесь · игроки: %2$s — посадите их за стол после старта</string>
     <string name="home_receive_game">Принять игру с другого телефона</string>
+    <!-- Неподтверждённая передача комнаты (ревью M5) -->
+    <string name="table_pending_handover_title">Новый банкир %1$s принял игру?</string>
+    <string name="table_pending_handover_body">Игра ушла новому банкиру, но подтверждения не было. Если он принял игру, отдайте ему %1$s наличными и нажмите «Да, принял» — здесь игра станет «Передана».</string>
+    <string name="table_pending_handover_stale">После отправки здесь появились новые записи — эту передачу уже не записать. Если новый банкир принял игру, передайте её заново.</string>
+    <string name="table_pending_handover_accepted">Да, принял</string>
+    <string name="table_pending_handover_keep">Нет, игра у меня</string>
+    <string name="table_pending_handover_ok">Понятно</string>
 </resources>

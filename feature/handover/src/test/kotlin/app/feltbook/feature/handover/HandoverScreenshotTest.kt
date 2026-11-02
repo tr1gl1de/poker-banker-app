@@ -51,6 +51,12 @@ class HandoverScreenshotTest {
     fun giveNoPlayServices() = capture { SendPreview(PreviewHandoverData.noGms) }
 
     @Test
+    fun givePermissionBlocked() = capture { SendPreview(PreviewHandoverData.blocked) }
+
+    @Test
+    fun receiveReviewSenderLost() = capture { ReceivePreview(PreviewHandoverData.reviewSenderLost) }
+
+    @Test
     fun giveDone() = capture { SendPreview(PreviewHandoverData.done) }
 
     @Test

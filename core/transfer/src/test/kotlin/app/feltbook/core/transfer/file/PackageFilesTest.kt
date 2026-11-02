@@ -17,6 +17,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /** Файл-фолбэк: имя файла, открытие `.feltbook`/`.pokerbank`, разбор входящего интента. */
@@ -32,14 +33,20 @@ class PackageFilesTest {
         assertEquals("feltbook.feltbook", AndroidPackageFileStore.fileName("  ...  "))
     }
 
+    /** content:// как у Telegram/«Файлов»: байты отдаёт ShadowContentResolver. */
+    private fun contentUri(name: String, bytes: ByteArray): Uri {
+        val uri = Uri.parse("content://test.files/" + Uri.encode(name))
+        shadowOf(context.contentResolver).registerInputStreamSupplier(uri) { ByteArrayInputStream(bytes) }
+        return uri
+    }
+
     @Test
     fun `открытие файла кладёт проверенный пакет в хранилище — оба расширения`() = runTest {
         val store = IncomingPackageStore()
         val handler = HandoverImportHandler(context, store, Dispatchers.Unconfined)
         val text = TestGames(Random(3)).handoverPackageText()
         listOf("Пятничный стол.feltbook", "старое.pokerbank").forEach { name ->
-            val file = File(context.cacheDir, name).apply { writeText(text) }
-            val incoming = handler.open(Uri.fromFile(file))
+            val incoming = handler.open(contentUri(name, text.encodeToByteArray()))
             assertTrue(incoming.result is DecodeResult.Ok)
             assertEquals(FeltbookCodec.KIND_HANDOVER, incoming.kind)
             assertEquals(name, incoming.fileName)
@@ -48,24 +55,41 @@ class PackageFilesTest {
     }
 
     @Test
-    fun `чужой или отсутствующий файл — NotFeltbook, повреждённый — ChecksumMismatch`() = runTest {
-        val store = IncomingPackageStore()
-        val handler = HandoverImportHandler(context, store, Dispatchers.Unconfined)
-        val photo = File(context.cacheDir, "photo.jpg").apply { writeBytes(byteArrayOf(-1, -40, -1, -32)) }
-        assertEquals(DecodeResult.NotFeltbook, handler.open(Uri.fromFile(photo)).result)
-        assertEquals(DecodeResult.NotFeltbook, handler.open(Uri.fromFile(File(context.cacheDir, "нет"))).result)
-
-        val text = TestGames(Random(4)).handoverPackageText()
-        // payload — JSON-строка внутри конверта: кавычки ключей экранированы.
-        val broken = File(context.cacheDir, "broken.feltbook")
-            .apply { writeText(text.replaceFirst("\\\"amount\\\":", "\\\"amount\\\":9")) }
-        assertEquals(DecodeResult.ChecksumMismatch, handler.open(Uri.fromFile(broken)).result)
+    fun `file-ссылка отклоняется даже для настоящего пакета`() = runTest {
+        val handler = HandoverImportHandler(context, IncomingPackageStore(), Dispatchers.Unconfined)
+        val text = TestGames(Random(5)).handoverPackageText()
+        val file = File(context.cacheDir, "Пятничный стол.feltbook").apply { writeText(text) }
+        assertEquals(DecodeResult.NotFeltbook, handler.open(Uri.fromFile(file)).result)
     }
 
     @Test
-    fun `больше 32 МБ не читается целиком`() {
-        val big = ByteArray(32 * 1024 * 1024 + 10) { 'a'.code.toByte() }
+    fun `чужой или отсутствующий файл — NotFeltbook, повреждённый — ChecksumMismatch`() = runTest {
+        val store = IncomingPackageStore()
+        val handler = HandoverImportHandler(context, store, Dispatchers.Unconfined)
+        val photo = contentUri("photo.jpg", byteArrayOf(-1, -40, -1, -32))
+        assertEquals(DecodeResult.NotFeltbook, handler.open(photo).result)
+        // Файла уже нет (Telegram удалил кэш): провайдер бросает FileNotFoundException.
+        val missing = Uri.parse("content://test.files/missing")
+        shadowOf(context.contentResolver).registerInputStreamSupplier(missing) {
+            throw java.io.FileNotFoundException("missing")
+        }
+        assertEquals(DecodeResult.NotFeltbook, handler.open(missing).result)
+
+        val text = TestGames(Random(4)).handoverPackageText()
+        // payload — JSON-строка внутри конверта: кавычки ключей экранированы.
+        val broken = text.replaceFirst("\\\"amount\\\":", "\\\"amount\\\":9")
+        assertEquals(
+            DecodeResult.ChecksumMismatch,
+            handler.open(contentUri("broken.feltbook", broken.encodeToByteArray())).result,
+        )
+    }
+
+    @Test
+    fun `больше 4 МБ не читается`() {
+        val big = ByteArray(HandoverImportHandler.MAX_FILE_BYTES + 1) { 'a'.code.toByte() }
         assertNull(HandoverImportHandler.readLimited(ByteArrayInputStream(big)))
+        val limit = ByteArray(HandoverImportHandler.MAX_FILE_BYTES) { 'a'.code.toByte() }
+        assertEquals(limit.size, HandoverImportHandler.readLimited(ByteArrayInputStream(limit))?.length)
         assertEquals("ok", HandoverImportHandler.readLimited(ByteArrayInputStream("ok".toByteArray())))
     }
 

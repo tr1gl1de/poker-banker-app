@@ -36,6 +36,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIncomingFile(intent: Intent?) {
+        // Запуск из «Недавних» повторяет старый интент: файл уже открывали — второй раз не открывать.
+        if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         HandoverImportHandler.uriFrom(intent)?.let(appViewModel::openIncomingFile)
     }
 }

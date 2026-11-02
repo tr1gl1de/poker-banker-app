@@ -43,12 +43,11 @@
                 <data android:mimeType="application/json" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
-            <!-- По расширению: файловые менеджеры (file:// на старых Android, content:// с именем в пути). -->
+            <!-- По расширению: файловые менеджеры (content:// с именем в пути). file:// не принимаем (HandoverImportHandler). -->
             <intent-filter tools:ignore="AppLinkUrlError">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="file" />
                 <data android:scheme="content" />
                 <data android:host="*" />
                 <data android:mimeType="*/*" />

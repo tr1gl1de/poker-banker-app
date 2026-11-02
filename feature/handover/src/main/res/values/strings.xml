@@ -104,4 +104,14 @@
     <string name="handover_incoming_template">Шаблон новой игры от %1$s</string>
     <string name="handover_accept_template">Принять шаблон</string>
     <string name="handover_rules_summary">рейк %1$s · сбор %2$s</string>
+    <!-- Ревью M5: разрешения, уход посреди передачи, итог -->
+    <string name="handover_permission_blocked">Доступ запрещён в настройках. Откройте настройки приложения → «Разрешения» и включите «Устройства поблизости» и геолокацию — или отправьте файлом.</string>
+    <string name="handover_open_settings">Открыть настройки</string>
+    <string name="handover_approximate_location">Нужна точная геолокация: на Android 12 телефоны рядом без неё не находятся. В запросе выберите «Точное местоположение».</string>
+    <string name="handover_leave_title">Прервать передачу?</string>
+    <string name="handover_leave_body">Пакет мог уже дойти до нового банкира. Если он примет игру, на столе появится вопрос «Новый банкир принял игру?».</string>
+    <string name="handover_leave_stay">Остаться</string>
+    <string name="handover_leave_confirm">Уйти</string>
+    <string name="handover_done_cash">Отдайте %1$s наличными</string>
+    <string name="handover_sender_lost">Связь с банкиром прервалась — он не узнает, что вы приняли игру. Принять можно; попросите его ответить «Да, принял» на своём столе.</string>
 </resources>

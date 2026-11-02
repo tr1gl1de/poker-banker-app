@@ -52,14 +52,19 @@ class NewGameViewModel @Inject constructor(
     private val state = MutableStateFlow(NewGameUiState(defaultTitleAt = clock.now()))
     val uiState: StateFlow<NewGameUiState> = state.asStateFlow()
 
+    /** Правила принятого шаблона, если «Новая игра» открыта с ним. */
+    private var templateRules: GameRules? = null
+
     private val eventChannel = Channel<NewGameEvent>(Channel.BUFFERED)
     val events: Flow<NewGameEvent> = eventChannel.receiveAsFlow()
 
     init {
         viewModelScope.launch {
             val settings = settingsRepository.settings.first()
-            val rules = settings.rulesForNewGame
             val template = templateStore.template.value
+            // Принятый шаблон (сценарий 2) задаёт правила этой игры; настройки по умолчанию он не меняет.
+            val rules = template?.rules ?: settings.rulesForNewGame
+            templateRules = template?.rules
             state.update {
                 it.copy(
                     loading = false,
@@ -176,13 +181,7 @@ class NewGameViewModel @Inject constructor(
             }
             when {
                 outcome == CommitOutcome.Ok -> {
-                    settingsRepository.update {
-                        it.copy(
-                            rulesForNewGame = current.rules,
-                            lastBankerName = banker,
-                            bankerPlays = current.bankerPlays,
-                        )
-                    }
+                    rememberChoices(current, banker)
                     templateStore.clear()
                     state.update { it.copy(busy = false) }
                     change?.let { eventChannel.send(NewGameEvent.Started(it.gameId.key())) }
@@ -199,6 +198,18 @@ class NewGameViewModel @Inject constructor(
 
                 else -> state.update { it.copy(busy = false, error = outcome.messageOrNull()) }
             }
+        }
+    }
+
+    /** Изменённые правила и имя банкира — в настройки (QUESTIONS №4); правила чужого шаблона без правок — нет. */
+    private suspend fun rememberChoices(current: NewGameUiState, banker: String) {
+        val fromTemplate = templateRules != null && current.rules == templateRules
+        settingsRepository.update {
+            it.copy(
+                rulesForNewGame = if (fromTemplate) it.rulesForNewGame else current.rules,
+                lastBankerName = banker,
+                bankerPlays = current.bankerPlays,
+            )
         }
     }
 

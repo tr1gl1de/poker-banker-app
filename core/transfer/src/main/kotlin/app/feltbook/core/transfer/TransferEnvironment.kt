@@ -21,6 +21,9 @@ interface TransferEnvironment {
 
     /** Android ≤ 11: поиск по Bluetooth не работает при выключенной геолокации. */
     fun isLocationServiceRequiredButOff(): Boolean
+
+    /** Android 12: пользователь выбрал «Приблизительное местоположение» — Nearby нужна точная. */
+    fun isApproximateLocationOnly(): Boolean
 }
 
 /** Разрешения Nearby по версиям Android (манифест `:core:transfer`). */
@@ -54,6 +57,9 @@ object TransferPermissions {
         else -> listOf(ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION)
     }
 
+    /** Android 12 (API 31–32): точная геолокация нужна, а пользователь может дать только приблизительную. */
+    fun asksPreciseLocation(sdkInt: Int): Boolean = sdkInt in S until TIRAMISU
+
     /** Нужна ли включённая геолокация (служба), а не только разрешение. */
     fun needsLocationService(sdkInt: Int): Boolean = sdkInt < S
 }
@@ -65,6 +71,13 @@ class AndroidTransferEnvironment @Inject constructor(@ApplicationContext private
 
     override fun missingPermissions(): List<String> = TransferPermissions.runtimeFor(Build.VERSION.SDK_INT)
         .filter { ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED }
+
+    override fun isApproximateLocationOnly(): Boolean {
+        if (!TransferPermissions.asksPreciseLocation(Build.VERSION.SDK_INT)) return false
+        fun granted(permission: String) =
+            ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        return granted(TransferPermissions.ACCESS_COARSE_LOCATION) && !granted(TransferPermissions.ACCESS_FINE_LOCATION)
+    }
 
     override fun isLocationServiceRequiredButOff(): Boolean {
         val manager = ContextCompat.getSystemService(context, LocationManager::class.java)

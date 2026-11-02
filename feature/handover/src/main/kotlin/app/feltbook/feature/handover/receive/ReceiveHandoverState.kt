@@ -6,6 +6,12 @@ import app.feltbook.core.domain.model.GameRules
 enum class ReceiveFailure {
     NO_GMS,
     PERMISSION_DENIED,
+
+    /** Отказано навсегда — только через настройки приложения. */
+    PERMISSION_BLOCKED,
+
+    /** Android 12: дана приблизительная геолокация, а нужна точная. */
+    APPROXIMATE_LOCATION,
     LOCATION_OFF,
 
     /** Nearby не соединился или оборвался до получения пакета. */
@@ -77,12 +83,24 @@ data class ReceiveUiState(
     val playAs: String? = null,
     val error: AcceptError? = null,
     val busy: Boolean = false,
-)
+    /** На сводке связь с отправителем оборвалась: принять можно, но ACK не дойдёт — предупреждение. */
+    val senderDisconnected: Boolean = false,
+) {
+    /** Вкладку «Отдать игру» не включить, пока идёт приём. */
+    val modeLocked: Boolean
+        get() = busy || fromFile || phase is ReceivePhase.Receiving || phase == ReceivePhase.Review ||
+            phase == ReceivePhase.Done || (phase is ReceivePhase.Code && phase.waitingPeer)
+}
 
 sealed interface ReceiveAction {
     data object Activate : ReceiveAction
 
     data object Deactivate : ReceiveAction
+
+    /** Экран снова на переднем плане (вернулись из настроек). */
+    data object Resumed : ReceiveAction
+
+    data object OpenSettings : ReceiveAction
 
     data class NameChanged(val name: String) : ReceiveAction
 
@@ -90,7 +108,7 @@ sealed interface ReceiveAction {
 
     data object AllowPermissions : ReceiveAction
 
-    data class PermissionsResult(val allGranted: Boolean) : ReceiveAction
+    data class PermissionsResult(val allGranted: Boolean, val permanentlyDenied: Boolean = false) : ReceiveAction
 
     data object Retry : ReceiveAction
 
@@ -108,6 +126,8 @@ sealed interface ReceiveAction {
 
 sealed interface ReceiveEvent {
     data class RequestPermissions(val permissions: List<String>) : ReceiveEvent
+
+    data object OpenAppSettings : ReceiveEvent
 
     /** Игра записана — открыть стол. */
     data class GameAccepted(val gameId: String) : ReceiveEvent

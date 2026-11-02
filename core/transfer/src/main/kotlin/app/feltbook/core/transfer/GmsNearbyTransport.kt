@@ -1,8 +1,6 @@
 package app.feltbook.core.transfer
 
 import android.content.Context
-import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -17,14 +15,10 @@ import com.google.android.gms.nearby.connection.Payload
 import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
-import com.google.android.gms.tasks.Task
 import java.io.InputStream
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * [NearbyTransport] на Google Nearby Connections. Колбэки Nearby приходят в главном потоке и складываются в канал.
@@ -103,12 +97,12 @@ class GmsNearbyTransport(context: Context) : NearbyTransport {
 
     override suspend fun startAdvertising(localName: String) {
         val options = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
-        client.startAdvertising(localName, SERVICE_ID, lifecycle, options).await()
+        client.startAdvertising(localName, SERVICE_ID, lifecycle, options).awaitNearby()
     }
 
     override suspend fun startDiscovery() {
         val options = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
-        client.startDiscovery(SERVICE_ID, discovery, options).await()
+        client.startDiscovery(SERVICE_ID, discovery, options).awaitNearby()
     }
 
     override fun stopAdvertising() = client.stopAdvertising()
@@ -116,26 +110,26 @@ class GmsNearbyTransport(context: Context) : NearbyTransport {
     override fun stopDiscovery() = client.stopDiscovery()
 
     override suspend fun requestConnection(localName: String, endpointId: String) {
-        client.requestConnection(localName, endpointId, lifecycle).await()
+        client.requestConnection(localName, endpointId, lifecycle).awaitNearby()
     }
 
     override suspend fun acceptConnection(endpointId: String) {
-        client.acceptConnection(endpointId, payloads).await()
+        client.acceptConnection(endpointId, payloads).awaitNearby()
     }
 
     override suspend fun rejectConnection(endpointId: String) {
-        client.rejectConnection(endpointId).await()
+        client.rejectConnection(endpointId).awaitNearby()
     }
 
     override suspend fun sendBytes(endpointId: String, bytes: ByteArray): Long {
         val payload = Payload.fromBytes(bytes)
-        client.sendPayload(endpointId, payload).await()
+        client.sendPayload(endpointId, payload).awaitNearby()
         return payload.id
     }
 
     override suspend fun sendStream(endpointId: String, input: InputStream): Long {
         val payload = Payload.fromStream(input)
-        client.sendPayload(endpointId, payload).await()
+        client.sendPayload(endpointId, payload).awaitNearby()
         return payload.id
     }
 
@@ -151,29 +145,9 @@ class GmsNearbyTransport(context: Context) : NearbyTransport {
         channel.trySend(event)
     }
 
-    /** Все вызовы ConnectionsClient — `Task<Void>`: ждём только успех или ошибку. */
-    private suspend fun <T> Task<T>.await(): Unit = suspendCancellableCoroutine { cont ->
-        addOnSuccessListener { cont.resume(Unit) }
-        addOnFailureListener { error ->
-            val code = (error as? ApiException)?.statusCode ?: CommonStatusCodes.ERROR
-            // Уже рекламируем/ищем/соединены — не ошибка для машины состояний.
-            if (code in ALREADY) {
-                cont.resume(Unit)
-            } else {
-                cont.resumeWithException(TransportException(code, error.message, error))
-            }
-        }
-        addOnCanceledListener { cont.cancel() }
-    }
-
     companion object {
         /** Идентификатор сервиса Nearby: телефоны с Feltbook видят только друг друга. */
         const val SERVICE_ID: String = "app.feltbook.handover"
         private val STRATEGY: Strategy = Strategy.P2P_POINT_TO_POINT
-        private val ALREADY = setOf(
-            ConnectionsStatusCodes.STATUS_ALREADY_ADVERTISING,
-            ConnectionsStatusCodes.STATUS_ALREADY_DISCOVERING,
-            ConnectionsStatusCodes.STATUS_ALREADY_CONNECTED_TO_ENDPOINT,
-        )
     }
 }

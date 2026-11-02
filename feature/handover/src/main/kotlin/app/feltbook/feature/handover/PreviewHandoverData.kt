@@ -19,6 +19,7 @@ import app.feltbook.feature.handover.send.SendHandoverScreen
 import app.feltbook.feature.handover.send.SendKind
 import app.feltbook.feature.handover.send.SendPhase
 import app.feltbook.feature.handover.send.SendUiState
+import app.feltbook.feature.handover.send.SentHandover
 
 /** Данные превью и скриншот-тестов — цифры макета Handover (не показываются в приложении). */
 object PreviewHandoverData {
@@ -44,6 +45,7 @@ object PreviewHandoverData {
         gameTitle = "Пятничный стол",
         act = act,
         rules = GameRules.DEFAULT,
+        players = 6,
     )
 
     val codeKeepIncome = code.copy(act = actWithIncome, keepIncome = true)
@@ -58,13 +60,18 @@ object PreviewHandoverData {
 
     val permission = code.copy(phase = SendPhase.NeedsPermission)
 
-    val failed = code.copy(phase = SendPhase.Failed(SendFailure.CONNECTION, ackLost = true))
+    val failed = code.copy(
+        phase = SendPhase.Failed(SendFailure.CONNECTION, ackLost = true),
+        sent = SentHandover(toBanker = "Влад", cashHandedOver = 950, incomeTaken = 0, entries = 23),
+    )
+
+    val blocked = code.copy(phase = SendPhase.Failed(SendFailure.PERMISSION_BLOCKED))
 
     val noGms = code.copy(phase = SendPhase.Failed(SendFailure.NO_GMS))
 
     val fileSent = failed.copy(dialog = SendDialog.FileSent)
 
-    val done = code.copy(phase = SendPhase.Done(peerName = "Влад"))
+    val done = code.copy(phase = SendPhase.Done(peerName = "Влад", cash = 950))
 
     val template = SendUiState(
         phase = SendPhase.Code(peerName = "Влад", digits = "0583", waitingPeer = false),
@@ -91,6 +98,8 @@ object PreviewHandoverData {
     val review = ReceiveUiState(phase = ReceivePhase.Review, summary = incoming, playAs = "2")
 
     val reviewError = review.copy(playAs = null, error = AcceptError.ANOTHER_GAME_ACTIVE)
+
+    val reviewSenderLost = review.copy(senderDisconnected = true)
 
     val reviewFile = ReceiveUiState(
         phase = ReceivePhase.Review,

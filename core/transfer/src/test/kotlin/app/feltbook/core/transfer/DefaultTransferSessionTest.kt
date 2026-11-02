@@ -198,6 +198,82 @@ class DefaultTransferSessionTest {
 
     // endregion
 
+    // region Тайм-ауты канала
+
+    @Test
+    fun `канал открыт, а пакет не пошёл минуту — TIMEOUT`() = runTest {
+        val transport = FakeNearbyTransport()
+        val session = newSession(transport)
+        connectSender(session, transport)
+        session.confirmCode()
+        transport.emit(TransportEvent.ConnectionResult("ep-1", success = true, rejected = false, statusCode = 0))
+        runCurrent()
+        advanceTimeBy(59.seconds)
+        runCurrent()
+        assertTrue(session.state.value is TransferState.Connected)
+        advanceTimeBy(2.seconds)
+        runCurrent()
+        assertEquals(TransferState.Failed(FailureReason.TIMEOUT), session.state.value)
+    }
+
+    @Test
+    fun `отправка без движения байтов 30 с — TIMEOUT, движение продлевает`() = runTest {
+        val transport = FakeNearbyTransport()
+        val session = newSession(transport)
+        connectSender(session, transport)
+        session.confirmCode()
+        transport.emit(TransportEvent.ConnectionResult("ep-1", success = true, rejected = false, statusCode = 0))
+        runCurrent()
+        session.send("пакет")
+        runCurrent()
+        advanceTimeBy(20.seconds)
+        transport.emit(TransportEvent.PayloadProgress("ep-1", 100, 5, PayloadStatus.IN_PROGRESS))
+        runCurrent()
+        advanceTimeBy(20.seconds)
+        runCurrent()
+        assertTrue(session.state.value is TransferState.Sending)
+        advanceTimeBy(11.seconds)
+        runCurrent()
+        assertEquals(TransferState.Failed(FailureReason.TIMEOUT), session.state.value)
+    }
+
+    @Test
+    fun `приём завис — TIMEOUT через 30 с без новых байтов`() = runTest {
+        val transport = FakeNearbyTransport()
+        val release = java.util.concurrent.CountDownLatch(1)
+        // Чтение — в настоящем фоновом потоке: поток «завис» на latch, а время теста виртуальное.
+        val session = DefaultTransferSession(transport, backgroundScope, kotlinx.coroutines.Dispatchers.IO)
+        connectReceiver(session, transport)
+        val stuck = object : java.io.InputStream() {
+            override fun read(): Int {
+                release.await()
+                return -1
+            }
+        }
+        transport.emit(TransportEvent.StreamReceived("ep-9", stuck))
+        runCurrent()
+        assertTrue(session.state.value is TransferState.Receiving)
+        advanceTimeBy(31.seconds)
+        runCurrent()
+        assertEquals(TransferState.Failed(FailureReason.TIMEOUT), session.state.value)
+        release.countDown()
+    }
+
+    @Test
+    fun `ошибка или отмена задачи Nearby не роняет очередь — следующая команда работает`() = runTest {
+        val transport = FakeNearbyTransport()
+        val session = newSession(transport)
+        transport.failNext = 16 // CommonStatusCodes.CANCELED
+        session.advertise("Влад")
+        runCurrent()
+        assertEquals(TransferState.Failed(FailureReason.START_FAILED, statusCode = 16), session.state.value)
+        session.advertise("Влад")
+        runCurrent()
+        assertEquals(TransferState.Advertising("Влад"), session.state.value)
+    }
+
+    // endregion
+
     // region Получатель
 
     @Test

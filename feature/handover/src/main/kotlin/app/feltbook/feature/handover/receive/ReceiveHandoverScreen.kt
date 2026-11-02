@@ -131,6 +131,8 @@ private fun failureText(reason: ReceiveFailure): String = stringResource(
     when (reason) {
         ReceiveFailure.NO_GMS -> R.string.handover_no_gms_receive
         ReceiveFailure.PERMISSION_DENIED -> R.string.handover_permission_denied_receive
+        ReceiveFailure.PERMISSION_BLOCKED -> R.string.handover_permission_blocked
+        ReceiveFailure.APPROXIMATE_LOCATION -> R.string.handover_approximate_location
         ReceiveFailure.LOCATION_OFF -> R.string.handover_location_off
         ReceiveFailure.CONNECTION -> R.string.handover_receive_failed
         ReceiveFailure.CORRUPTED -> R.string.handover_error_corrupted
@@ -217,6 +219,13 @@ private fun Summary(state: ReceiveUiState, summary: IncomingSummary, onAction: (
             }
         }
     }
+    if (state.senderDisconnected && !state.fromFile) {
+        InfoBanner(
+            text = stringResource(R.string.handover_sender_lost),
+            variant = BannerVariant.Warn,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+        )
+    }
     val error = state.error
     if (error != null) {
         InfoBanner(
@@ -292,23 +301,17 @@ private fun Bottom(state: ReceiveUiState, onAction: (ReceiveAction) -> Unit) {
             }
 
             is ReceivePhase.Failed -> if (!state.fromFile && phase.reason != ReceiveFailure.NO_GMS) {
+                val (label, action) = when (phase.reason) {
+                    ReceiveFailure.PERMISSION_DENIED, ReceiveFailure.APPROXIMATE_LOCATION ->
+                        R.string.handover_permission_allow to ReceiveAction.AllowPermissions
+
+                    ReceiveFailure.PERMISSION_BLOCKED -> R.string.handover_open_settings to ReceiveAction.OpenSettings
+
+                    else -> R.string.handover_retry to ReceiveAction.Retry
+                }
                 BrassButton(
-                    text = stringResource(
-                        if (phase.reason == ReceiveFailure.PERMISSION_DENIED) {
-                            R.string.handover_permission_allow
-                        } else {
-                            R.string.handover_retry
-                        },
-                    ),
-                    onClick = {
-                        onAction(
-                            if (phase.reason == ReceiveFailure.PERMISSION_DENIED) {
-                                ReceiveAction.AllowPermissions
-                            } else {
-                                ReceiveAction.Retry
-                            },
-                        )
-                    },
+                    text = stringResource(label),
+                    onClick = { onAction(action) },
                     style = BrassButtonStyle.Flat56,
                     modifier = Modifier.fillMaxWidth(),
                 )

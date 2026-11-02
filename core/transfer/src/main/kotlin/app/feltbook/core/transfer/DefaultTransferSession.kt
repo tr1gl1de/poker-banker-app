@@ -24,6 +24,8 @@ import kotlinx.coroutines.launch
  * @property codeConfirm от показа кода до подтверждения на обоих телефонах.
  * @property ack от доставки пакета до «Принять» на втором телефоне.
  * @property ackDelivery сколько получатель ждёт доставки своего ACK, прежде чем разорвать соединение.
+ * @property connected канал открыт, а пакет не начал идти (отправитель не отправил / получатель не получил).
+ * @property stall пакет идёт, но байты не двигаются.
  */
 data class TransferTimeouts(
     val discovery: Duration = 60.seconds,
@@ -31,6 +33,8 @@ data class TransferTimeouts(
     val codeConfirm: Duration = 2.minutes,
     val ack: Duration = 10.minutes,
     val ackDelivery: Duration = 5.seconds,
+    val connected: Duration = 60.seconds,
+    val stall: Duration = 30.seconds,
 )
 
 /**
@@ -212,6 +216,7 @@ class DefaultTransferSession(
         outgoing = encoded
         val total = encoded.bytes.size.toLong()
         mutableState.value = TransferState.Sending(current.endpoint, TransferProgress(0, total))
+        startTimer(timeouts.stall)
         outgoingPayloadId = transport.sendStream(current.endpoint.id, ByteArrayInputStream(encoded.bytes))
     }
 
@@ -318,6 +323,7 @@ class DefaultTransferSession(
                 cancelTimer()
                 if (role == Role.RECEIVER) transport.stopAdvertising()
                 mutableState.value = TransferState.Connected(endpoint)
+                startTimer(timeouts.connected)
             }
 
             mutableState.value !is TransferState.AwaitingCodeConfirm &&
@@ -369,6 +375,7 @@ class DefaultTransferSession(
             return
         }
         mutableState.value = TransferState.Receiving(endpoint, TransferProgress(0, -1))
+        startTimer(timeouts.stall)
         val run = ++readRun
         reader?.cancel()
         reader = scope.launch(ioDispatcher) {
@@ -391,10 +398,13 @@ class DefaultTransferSession(
     private fun onReadProgress(bytes: Long, total: Long) {
         val current = mutableState.value as? TransferState.Receiving ?: return
         mutableState.value = current.copy(progress = TransferProgress(bytes, total))
+        startTimer(timeouts.stall)
     }
 
     private fun onReadDone(decoded: PackageFrame.Decoded) {
         val current = mutableState.value as? TransferState.Receiving ?: return
+        // Дальше — решение человека («Принять»), без тайм-аута.
+        cancelTimer()
         receivedToken = decoded.token
         mutableState.value = TransferState.AwaitingAccept(current.endpoint, decoded.text, peerConnected = connected)
     }
@@ -416,6 +426,7 @@ class DefaultTransferSession(
         val current = mutableState.value
         when (event.status) {
             PayloadStatus.IN_PROGRESS -> if (current is TransferState.Sending) {
+                if (event.bytesTransferred > current.progress.bytes) startTimer(timeouts.stall)
                 mutableState.value = current.copy(progress = TransferProgress(event.bytesTransferred, total))
             }
 
@@ -440,6 +451,9 @@ class DefaultTransferSession(
             TransferState.Discovering,
             is TransferState.Connecting,
             is TransferState.AwaitingCodeConfirm,
+            is TransferState.Connected,
+            is TransferState.Sending,
+            is TransferState.Receiving,
             is TransferState.AwaitingAck,
             -> fail(FailureReason.TIMEOUT)
 

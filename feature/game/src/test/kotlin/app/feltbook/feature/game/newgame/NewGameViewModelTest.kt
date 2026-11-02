@@ -43,12 +43,16 @@ class NewGameViewModelTest {
 
     @Test
     fun showsReceivedTemplateNamesUntilGameStarts() = runTest {
-        templates.put(GameTemplate("Андрей", rules, listOf("Борис", "Дима")))
+        val templateRules = GameRules.DEFAULT.copy(rakeValue = 7, minBuyIn = 1_000)
+        templates.put(GameTemplate("Андрей", templateRules, listOf("Борис", "Дима")))
         val state = viewModel.uiState.value
         assertEquals("Андрей", state.templateFrom)
         assertEquals(listOf("Борис", "Дима"), state.templateNames)
+        // Правила шаблона — в этой игре, а не в настройках по умолчанию.
+        assertEquals(templateRules, state.rules)
         viewModel.onAction(NewGameAction.Start("Игра"))
         assertEquals(null, templates.template.value)
+        assertEquals(rules, settings.state.value.rulesForNewGame)
     }
 
     @Test

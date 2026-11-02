@@ -1,5 +1,6 @@
 package app.feltbook.feature.handover.testing
 
+import app.feltbook.core.data.handover.PendingHandoverStore
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.engine.CloseConfirmation
 import app.feltbook.core.domain.engine.Commands
@@ -24,6 +25,7 @@ import app.feltbook.core.transfer.TransferSession
 import app.feltbook.core.transfer.TransferState
 import app.feltbook.core.transfer.file.PackageFileStore
 import app.feltbook.core.transfer.file.SharedFile
+import java.io.File
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
@@ -94,16 +96,23 @@ class FakeTransferSession : TransferSession {
     }
 }
 
+/** Хранилище неподтверждённых передач во временном файле (без Android). */
+fun pendingStore(): PendingHandoverStore =
+    PendingHandoverStore(File.createTempFile("pending", ".json").apply { delete() }, Dispatchers.Unconfined)
+
 class FakeEnvironment(
     var nearby: Boolean = true,
     var missing: List<String> = emptyList(),
     var locationOff: Boolean = false,
+    var approximateOnly: Boolean = false,
 ) : TransferEnvironment {
     override fun isNearbyAvailable(): Boolean = nearby
 
     override fun missingPermissions(): List<String> = missing
 
     override fun isLocationServiceRequiredButOff(): Boolean = locationOff
+
+    override fun isApproximateLocationOnly(): Boolean = approximateOnly
 }
 
 class FakeFileStore : PackageFileStore {

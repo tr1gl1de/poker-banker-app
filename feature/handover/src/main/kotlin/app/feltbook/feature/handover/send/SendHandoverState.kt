@@ -13,6 +13,12 @@ enum class SendFailure {
     /** Нет Google Play Services — сразу файл. */
     NO_GMS,
     PERMISSION_DENIED,
+
+    /** Отказано навсегда («Больше не спрашивать») — только через настройки приложения. */
+    PERMISSION_BLOCKED,
+
+    /** Android 12: дана приблизительная геолокация, а Nearby нужна точная. */
+    APPROXIMATE_LOCATION,
     LOCATION_OFF,
 
     /** Nearby не соединился, оборвался, не ответил. */
@@ -28,6 +34,9 @@ enum class SendFailure {
 
 sealed interface SendPhase {
     data object Loading : SendPhase
+
+    /** Вкладка не активна или поиск остановлен — ничего не идёт. */
+    data object Idle : SendPhase
 
     /** Нечего передавать: игры нет. */
     data object NoGame : SendPhase
@@ -52,7 +61,8 @@ sealed interface SendPhase {
 
     data class AwaitingAccept(val peerName: String) : SendPhase
 
-    data class Done(val peerName: String) : SendPhase
+    /** [cash] — «Отдайте N ₽ наличными» по записанному акту (null — шаблон). */
+    data class Done(val peerName: String, val cash: Long? = null) : SendPhase
 
     /** [ackLost] — пакет ушёл, ACK нет: «Новый банкир уже принял игру?». */
     data class Failed(val reason: SendFailure, val ackLost: Boolean = false) : SendPhase
@@ -67,7 +77,14 @@ sealed interface SendDialog {
 
     /** «Новый банкир принял игру?» — ACK потерян. */
     data object AckLost : SendDialog
+
+    /** «Прервать передачу?» — уход с экрана, пока передача не подтверждена. */
+    data object Leave : SendDialog
 }
+
+/** Пакет ушёл: акт зафиксирован (доход не переключить), показывается то, что реально отправлено. */
+@Immutable
+data class SentHandover(val toBanker: String, val cashHandedOver: Long, val incomeTaken: Long, val entries: Int)
 
 @Immutable
 data class SendUiState(
@@ -78,28 +95,62 @@ data class SendUiState(
     val keepIncome: Boolean = false,
     val rules: GameRules? = null,
     val templateNames: Int = 0,
+    /** Все игроки игры (не только за столом) — «Передаётся: N игроков». */
+    val players: Int = 0,
+    val sent: SentHandover? = null,
     val dialog: SendDialog? = null,
     val busy: Boolean = false,
 ) {
+    /** После отправки «Оставить доход себе» не меняется: пакет с этим актом мог дойти. */
+    val incomeLocked: Boolean get() = sent != null
+
     /** Переключатель «Оставить доход себе» доступен, только если есть что забрать (m3-ui-spec §5.10). */
     val keepIncomeEnabled: Boolean get() = (act?.incomeTakeable ?: 0L) > 0L
 
-    val cashToHandOver: Long get() = act?.cashToHandOver(keepIncome && keepIncomeEnabled) ?: 0L
+    val keepIncomeShown: Boolean get() = sent?.let { it.incomeTaken > 0 } ?: (keepIncome && keepIncomeEnabled)
+
+    val cashToHandOver: Long
+        get() = sent?.cashHandedOver ?: act?.cashToHandOver(keepIncome && keepIncomeEnabled) ?: 0L
+
+    /** Записей в пакете: журнал + INCOME_TAKEN, если доход остаётся у отправителя. */
+    val payloadEntries: Int
+        get() = sent?.entries ?: ((act?.entryCount ?: 0) + if (keepIncome && keepIncomeEnabled) 1 else 0)
 
     /** «Отправить файлом» — после любой неудачи и при отказе в разрешениях. */
     val canSendFile: Boolean
         get() = (phase is SendPhase.Failed && phase.reason != SendFailure.STALE) || phase == SendPhase.NeedsPermission
+
+    /** Уход с экрана спрашивает подтверждение: пакет мог дойти, а запись ещё не сделана. */
+    val leaveNeedsConfirm: Boolean
+        get() = phase is SendPhase.Sending ||
+            phase is SendPhase.AwaitingAccept ||
+            (phase is SendPhase.Failed && phase.ackLost) ||
+            dialog == SendDialog.FileSent
+
+    /** Вкладку «Принять игру» не включить, пока идёт передача. */
+    val modeLocked: Boolean
+        get() = busy ||
+            leaveNeedsConfirm ||
+            phase is SendPhase.Done ||
+            (phase is SendPhase.Code && phase.waitingPeer)
 }
 
 sealed interface SendAction {
-    /** Вкладка «Отдать игру» стала видимой / скрытой. */
+    /** Вкладка «Отдать игру» стала видимой. Повторный Activate посреди передачи ничего не делает. */
     data object Activate : SendAction
 
+    /** Вкладка скрыта: поиск останавливается, но идущая передача — нет. */
     data object Deactivate : SendAction
+
+    /** Экран снова на переднем плане (вернулись из настроек). */
+    data object Resumed : SendAction
 
     data object AllowPermissions : SendAction
 
-    data class PermissionsResult(val allGranted: Boolean) : SendAction
+    /** [permanentlyDenied] — отказ «больше не спрашивать» (shouldShowRequestPermissionRationale = false). */
+    data class PermissionsResult(val allGranted: Boolean, val permanentlyDenied: Boolean = false) : SendAction
+
+    data object OpenSettings : SendAction
 
     data object Retry : SendAction
 
@@ -127,6 +178,12 @@ sealed interface SendAction {
 
     data object DismissDialog : SendAction
 
+    /** «Назад» (кнопка шапки или системная). */
+    data object Back : SendAction
+
+    /** «Уйти» в «Прервать передачу?». */
+    data object ConfirmLeave : SendAction
+
     /** «На главную» после передачи. */
     data object Finish : SendAction
 }
@@ -134,7 +191,11 @@ sealed interface SendAction {
 sealed interface SendEvent {
     data class RequestPermissions(val permissions: List<String>) : SendEvent
 
+    data object OpenAppSettings : SendEvent
+
     data class Share(val file: SharedFile) : SendEvent
+
+    data object Leave : SendEvent
 
     data object Finished : SendEvent
 }

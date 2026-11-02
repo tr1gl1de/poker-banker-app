@@ -93,13 +93,11 @@ class ReceiveHandoverViewModel @Inject constructor(
                 if (!fromFile && localName != null && mutableState.value.phase == ReceivePhase.Loading) start()
             }
 
-            ReceiveAction.Deactivate -> {
-                active = false
-                if (!fromFile && mutableState.value.phase != ReceivePhase.Review) {
-                    session.cancel()
-                    setPhase(ReceivePhase.Loading)
-                }
-            }
+            ReceiveAction.Deactivate -> deactivate()
+
+            ReceiveAction.Resumed -> onResumed()
+
+            ReceiveAction.OpenSettings -> eventChannel.trySend(ReceiveEvent.OpenAppSettings)
 
             is ReceiveAction.NameChanged -> mutableState.update { state ->
                 val phase = state.phase as? ReceivePhase.NeedsName ?: return@update state
@@ -113,10 +111,15 @@ class ReceiveHandoverViewModel @Inject constructor(
                 if (missing.isEmpty()) start() else eventChannel.trySend(ReceiveEvent.RequestPermissions(missing))
             }
 
-            is ReceiveAction.PermissionsResult -> if (action.allGranted) {
-                start()
-            } else {
-                setPhase(ReceivePhase.Failed(ReceiveFailure.PERMISSION_DENIED))
+            is ReceiveAction.PermissionsResult -> when {
+                action.allGranted -> start()
+
+                environment.isApproximateLocationOnly() ->
+                    setPhase(ReceivePhase.Failed(ReceiveFailure.APPROXIMATE_LOCATION))
+
+                action.permanentlyDenied -> setPhase(ReceivePhase.Failed(ReceiveFailure.PERMISSION_BLOCKED))
+
+                else -> setPhase(ReceivePhase.Failed(ReceiveFailure.PERMISSION_DENIED))
             }
 
             ReceiveAction.Retry -> start()
@@ -131,6 +134,31 @@ class ReceiveHandoverViewModel @Inject constructor(
 
             ReceiveAction.Decline -> decline()
         }
+    }
+
+    /** Скрыли вкладку: остановить ожидание; код, приём и сводку — нет (их не потерять поворотом экрана). */
+    private fun deactivate() {
+        if (fromFile) return
+        val stoppable = when (mutableState.value.phase) {
+            ReceivePhase.Loading, is ReceivePhase.NeedsName, ReceivePhase.NeedsPermission, is ReceivePhase.Waiting,
+            is ReceivePhase.Failed,
+            -> true
+
+            else -> false
+        }
+        if (!stoppable) return
+        active = false
+        session.cancel()
+        setPhase(ReceivePhase.Loading)
+    }
+
+    /** Вернулись из настроек: доступ выдан — продолжить сами. */
+    private fun onResumed() {
+        val phase = mutableState.value.phase
+        val waitingForAccess = phase == ReceivePhase.NeedsPermission ||
+            (phase is ReceivePhase.Failed && phase.reason in ACCESS_FAILURES)
+        if (!active || fromFile || !waitingForAccess) return
+        if (environment.missingPermissions().isEmpty() && !environment.isLocationServiceRequiredButOff()) start()
     }
 
     private fun confirmName() {
@@ -168,7 +196,15 @@ class ReceiveHandoverViewModel @Inject constructor(
 
     private fun onTransfer(transfer: TransferState) {
         if (!active) return
-        if (mutableState.value.phase == ReceivePhase.Review || mutableState.value.phase == ReceivePhase.Done) return
+        val phase = mutableState.value.phase
+        if (phase == ReceivePhase.Review) {
+            // Связь оборвалась на сводке: принять можно, но отправитель не узнает — предупредить.
+            if (transfer is TransferState.AwaitingAccept && !transfer.peerConnected) {
+                mutableState.update { it.copy(senderDisconnected = true) }
+            }
+            return
+        }
+        if (phase == ReceivePhase.Done) return
         when (transfer) {
             is TransferState.Advertising -> setPhase(ReceivePhase.Waiting(transfer.localName))
 
@@ -242,7 +278,15 @@ class ReceiveHandoverViewModel @Inject constructor(
             return
         }
         incoming = result.pkg
-        mutableState.update { it.copy(phase = ReceivePhase.Review, summary = summary, playAs = null, error = null) }
+        mutableState.update {
+            it.copy(
+                phase = ReceivePhase.Review,
+                summary = summary,
+                playAs = null,
+                error = null,
+                senderDisconnected = false,
+            )
+        }
     }
 
     private fun templateSummary(template: GameTemplate, fileName: String?) = IncomingSummary(
@@ -283,11 +327,14 @@ class ReceiveHandoverViewModel @Inject constructor(
     private suspend fun acceptGame(pkg: FeltbookPackage.HandoverPackage): AcceptError? {
         val gameId = pkg.game.game.id
         val playAs = mutableState.value.playAs?.let { PlayerId(Uuid.parse(it)) }
+        val local = gameRepository.getGame(gameId)
+        // Эта передача уже принята здесь (повторный пакет после потерянного ACK) — без записи, только ACK.
+        if (local != null && local.handovers.any { it.id == pkg.handover.id }) return null
         return try {
             val change = Handovers.accept(
                 incoming = pkg.game,
                 handover = pkg.handover,
-                local = gameRepository.getGame(gameId),
+                local = local,
                 activeGame = gameRepository.getActiveGame()?.game,
                 receiverPlayerId = playAs,
             )
@@ -321,10 +368,12 @@ class ReceiveHandoverViewModel @Inject constructor(
         }
     }
 
-    /** Сценарий 2: правила — в «Новую игру» (`rulesForNewGame`), имена — подсказки через [ReceivedTemplateStore]. */
-    private suspend fun acceptTemplate(template: GameTemplate): AcceptError? {
+    /**
+     * Сценарий 2: шаблон — только для следующей «Новой игры» ([ReceivedTemplateStore]: правила и имена); настройки
+     * по умолчанию не трогаются.
+     */
+    private fun acceptTemplate(template: GameTemplate): AcceptError? {
         if (template.rules.problems().isNotEmpty()) return AcceptError.INVALID
-        settingsRepository.update { it.copy(rulesForNewGame = template.rules) }
         templateStore.put(template)
         return null
     }
@@ -347,6 +396,15 @@ class ReceiveHandoverViewModel @Inject constructor(
 
     override fun onCleared() {
         session.close()
+    }
+
+    private companion object {
+        val ACCESS_FAILURES = setOf(
+            ReceiveFailure.PERMISSION_DENIED,
+            ReceiveFailure.PERMISSION_BLOCKED,
+            ReceiveFailure.APPROXIMATE_LOCATION,
+            ReceiveFailure.LOCATION_OFF,
+        )
     }
 }
 

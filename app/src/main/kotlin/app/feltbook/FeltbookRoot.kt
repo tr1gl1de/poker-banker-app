@@ -46,8 +46,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import app.feltbook.core.domain.model.ThemeMode
 import app.feltbook.core.ui.component.BottomBarIcon
 import app.feltbook.core.ui.component.BottomBarItem
@@ -148,6 +150,25 @@ private fun NavDestination?.showsBottomBar(): Boolean = this == null ||
     hasRoute<HistoryRoute>() ||
     hasRoute<SettingsRoute>()
 
+/**
+ * Открытый снаружи файл .feltbook — «Принять игру» поверх текущего экрана вкладки «Игра». Убирается только прежний
+ * экран приёма файла; экран отправителя (там может идти неподтверждённая передача) остаётся под ним.
+ */
+@Composable
+private fun OpenIncomingRoutes(navController: NavHostController, pendingRoutes: Flow<HandoverRoute>) {
+    LaunchedEffect(navController) {
+        pendingRoutes.collect { route ->
+            val current = navController.currentDestination.tab()
+            if (current != Tab.GAME) navController.openTab(Tab.GAME, current = current)
+            val top = navController.currentBackStackEntry
+            val replacesFileScreen = top?.destination?.hasRoute<HandoverRoute>() == true &&
+                top.toRoute<HandoverRoute>().fromFile
+            if (replacesFileScreen) navController.popBackStack()
+            navController.navigate(route)
+        }
+    }
+}
+
 /** Порог прокрутки, после которого панель на столе прячется/возвращается. */
 private const val SCROLL_HIDE_THRESHOLD = 6f
 private const val BAR_ANIMATION_MILLIS = 200
@@ -179,15 +200,7 @@ private fun AppScaffold(
         coldStartHandled = true
     }
 
-    // Открытый снаружи файл .feltbook — «Принять игру» поверх текущего экрана вкладки «Игра».
-    LaunchedEffect(navController) {
-        pendingRoutes.collect { route ->
-            val current = navController.currentDestination.tab()
-            if (current != Tab.GAME) navController.openTab(Tab.GAME, current = current)
-            // Новый экран приёма: его ViewModel читает только что открытый файл (старый экран приёма — убрать).
-            navController.navigate(route) { popUpTo<HandoverRoute> { inclusive = true } }
-        }
-    }
+    OpenIncomingRoutes(navController = navController, pendingRoutes = pendingRoutes)
 
     // Стол: панель прячется при прокрутке вниз и возвращается при прокрутке вверх.
     var hiddenByScroll by remember { mutableStateOf(false) }

@@ -27,6 +27,7 @@ import app.feltbook.core.ui.component.HoldButtonSize
 import app.feltbook.core.ui.component.HoldToConfirmButton
 import app.feltbook.core.ui.component.InfoBanner
 import app.feltbook.core.ui.component.OutlineButton
+import app.feltbook.core.ui.format.MoneyFormat
 import app.feltbook.core.ui.icons.FeltbookIcons
 import app.feltbook.core.ui.theme.FeltbookDimens
 import app.feltbook.core.ui.theme.FeltbookTheme
@@ -68,7 +69,8 @@ private fun StatusCard(state: SendUiState, onAction: (SendAction) -> Unit) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     when (val phase = state.phase) {
-        SendPhase.Loading -> DeviceCard { WaitingRow(text = stringResource(R.string.handover_connecting)) }
+        SendPhase.Loading, SendPhase.Idle ->
+            DeviceCard { WaitingRow(text = stringResource(R.string.handover_connecting)) }
 
         SendPhase.NoGame -> DeviceCard { CardMessage(title = stringResource(R.string.handover_no_game), body = null) }
 
@@ -135,6 +137,14 @@ private fun StatusCard(state: SendUiState, onAction: (SendAction) -> Unit) {
                     null
                 },
             )
+            phase.cash?.let { cash ->
+                Text(
+                    text = stringResource(R.string.handover_done_cash, MoneyFormat.rub(cash)),
+                    style = type.title,
+                    color = colors.brassBright,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         is SendPhase.Failed -> Column(
@@ -154,6 +164,8 @@ private fun failureText(reason: SendFailure): String = stringResource(
     when (reason) {
         SendFailure.NO_GMS -> R.string.handover_no_gms
         SendFailure.PERMISSION_DENIED -> R.string.handover_permission_denied
+        SendFailure.PERMISSION_BLOCKED -> R.string.handover_permission_blocked
+        SendFailure.APPROXIMATE_LOCATION -> R.string.handover_approximate_location
         SendFailure.LOCATION_OFF -> R.string.handover_location_off
         SendFailure.CONNECTION -> R.string.handover_failed
         SendFailure.DECLINED -> R.string.handover_declined
@@ -173,13 +185,13 @@ private fun PackageBlock(state: SendUiState, onAction: (SendAction) -> Unit) {
             val act = state.act ?: return
             ActSection(
                 act = act,
-                keepIncome = state.keepIncome,
+                keepIncome = state.keepIncomeShown,
                 keepIncomeEnabled = state.keepIncomeEnabled,
                 cashToHandOver = state.cashToHandOver,
                 onKeepIncome = { onAction(SendAction.KeepIncome(it)) },
-                switchEnabled = switchEnabled && !state.busy,
+                switchEnabled = switchEnabled && !state.busy && !state.incomeLocked,
             )
-            PayloadLine(act = act)
+            PayloadLine(players = state.players, chips = act.chipsInPlay, entries = state.payloadEntries)
         }
 
         SendKind.TEMPLATE -> {
@@ -266,18 +278,17 @@ private fun FailedButtons(state: SendUiState, phase: SendPhase.Failed, onAction:
         )
 
         else -> {
+            val (label, action) = when (phase.reason) {
+                SendFailure.PERMISSION_DENIED, SendFailure.APPROXIMATE_LOCATION ->
+                    R.string.handover_permission_allow to SendAction.AllowPermissions
+
+                SendFailure.PERMISSION_BLOCKED -> R.string.handover_open_settings to SendAction.OpenSettings
+
+                else -> R.string.handover_retry to SendAction.Retry
+            }
             BrassButton(
-                text = stringResource(
-                    if (phase.reason == SendFailure.PERMISSION_DENIED) {
-                        R.string.handover_permission_allow
-                    } else {
-                        R.string.handover_retry
-                    },
-                ),
-                onClick = {
-                    val denied = phase.reason == SendFailure.PERMISSION_DENIED
-                    onAction(if (denied) SendAction.AllowPermissions else SendAction.Retry)
-                },
+                text = stringResource(label),
+                onClick = { onAction(action) },
                 style = BrassButtonStyle.Flat56,
                 enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
@@ -346,6 +357,16 @@ private fun Dialogs(state: SendUiState, onAction: (SendAction) -> Unit) {
             onConfirm = { onAction(SendAction.FileSentConfirmed) },
             destructive = false,
             confirmEnabled = !state.busy,
+        )
+
+        SendDialog.Leave -> FeltbookDialog(
+            title = stringResource(R.string.handover_leave_title),
+            body = stringResource(R.string.handover_leave_body),
+            safeLabel = stringResource(R.string.handover_leave_stay),
+            onSafe = dismiss,
+            confirmLabel = stringResource(R.string.handover_leave_confirm),
+            onConfirm = { onAction(SendAction.ConfirmLeave) },
+            destructive = true,
         )
 
         SendDialog.AckLost -> FeltbookDialog(

@@ -3,7 +3,10 @@ package app.feltbook.feature.handover.send
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.handover.PendingHandover
+import app.feltbook.core.data.handover.PendingHandoverStore
 import app.feltbook.core.domain.engine.DomainRuleViolation
+import app.feltbook.core.domain.engine.GameStates
 import app.feltbook.core.domain.engine.Handovers
 import app.feltbook.core.domain.engine.PlayerNames
 import app.feltbook.core.domain.engine.PreparedHandover
@@ -11,6 +14,7 @@ import app.feltbook.core.domain.engine.Stamp
 import app.feltbook.core.domain.model.GameId
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
+import app.feltbook.core.domain.model.HandoverId
 import app.feltbook.core.domain.repository.CommitRejectedException
 import app.feltbook.core.domain.repository.GameRepository
 import app.feltbook.core.domain.repository.commit
@@ -40,11 +44,14 @@ import kotlinx.coroutines.launch
 /**
  * «Отдать игру» (ТЗ §6, m3-ui-spec §5.10). Отправитель ищет, сверяет код, удержанием «Код совпадает» подтверждает и
  * отправляет пакет; записывает передачу (`senderChange`: INCOME_TAKEN? + акт + HANDED_OVER) только после ACK
- * получателя, явного «Файл отправлен» или «Новый банкир принял игру» (ADR 0007). Повторная отправка той же игры
- * тому же банкиру переиспользует подготовленную передачу — те же id, без расхождения журналов.
+ * получателя, явного «Файл отправлен» или «Новый банкир принял игру» (ADR 0007).
+ *
+ * Передача не теряется: как только пакет уходит, она сохраняется в [PendingHandoverStore] (стол спросит «принял?»
+ * даже после смерти процесса); повторная отправка тому же банкиру — та же подготовленная передача (те же id);
+ * повторный Activate посреди передачи ничего не перезапускает.
  */
 // По обработчику на действие экрана; ранние выходы — действие не к месту.
-@Suppress("TooManyFunctions", "ReturnCount", "ComplexCondition", "CyclomaticComplexMethod")
+@Suppress("TooManyFunctions", "ReturnCount", "ComplexCondition", "CyclomaticComplexMethod", "LargeClass")
 @HiltViewModel
 class SendHandoverViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -52,6 +59,7 @@ class SendHandoverViewModel @Inject constructor(
     private val session: TransferSession,
     private val environment: TransferEnvironment,
     private val fileStore: PackageFileStore,
+    private val pendingStore: PendingHandoverStore,
     private val clock: Clock,
 ) : ViewModel() {
     private val gameId: GameId? =
@@ -66,6 +74,12 @@ class SendHandoverViewModel @Inject constructor(
     private var snapshot: GameSnapshot? = null
     private var prepared: PreparedHandover? = null
     private var active = false
+
+    /** Пакеты этих передач точно дошли до получателя (помнится и после повторной попытки). */
+    private val delivered = mutableSetOf<HandoverId>()
+
+    /** Файл с подготовленной передачей ушёл в Sharesheet — она неподтверждённая до «Файл отправлен» или стола. */
+    private var fileExported = false
 
     /** Передача записывается или записана здесь — HANDED_OVER из базы не показывать как «уже передана». */
     private var handingOver = false
@@ -85,30 +99,30 @@ class SendHandoverViewModel @Inject constructor(
         viewModelScope.launch { session.state.collect(::onTransfer) }
     }
 
-    @Suppress("CyclomaticComplexMethod")
     fun onAction(action: SendAction) {
         when (action) {
             SendAction.Activate -> activate()
 
             SendAction.Deactivate -> deactivate()
 
+            SendAction.Resumed -> onResumed()
+
             SendAction.AllowPermissions -> {
                 val missing = environment.missingPermissions()
                 if (missing.isEmpty()) start() else eventChannel.trySend(SendEvent.RequestPermissions(missing))
             }
 
-            is SendAction.PermissionsResult -> if (action.allGranted) {
-                start()
-            } else {
-                setPhase(SendPhase.Failed(SendFailure.PERMISSION_DENIED))
-            }
+            is SendAction.PermissionsResult -> onPermissionsResult(action)
+
+            SendAction.OpenSettings -> eventChannel.trySend(SendEvent.OpenAppSettings)
 
             SendAction.Retry -> start()
 
             is SendAction.SelectDevice -> session.connect(action.endpointId)
 
-            is SendAction.KeepIncome ->
-                mutableState.update { it.copy(keepIncome = action.keep && it.keepIncomeEnabled) }
+            is SendAction.KeepIncome -> mutableState.update {
+                if (it.incomeLocked) it else it.copy(keepIncome = action.keep && it.keepIncomeEnabled)
+            }
 
             SendAction.ConfirmAndSend -> session.confirmCode()
 
@@ -131,6 +145,17 @@ class SendHandoverViewModel @Inject constructor(
 
             SendAction.DismissDialog -> mutableState.update { it.copy(dialog = null) }
 
+            SendAction.Back -> if (mutableState.value.leaveNeedsConfirm) {
+                mutableState.update { it.copy(dialog = SendDialog.Leave) }
+            } else {
+                eventChannel.trySend(SendEvent.Leave)
+            }
+
+            SendAction.ConfirmLeave -> {
+                mutableState.update { it.copy(dialog = null) }
+                eventChannel.trySend(SendEvent.Leave)
+            }
+
             SendAction.Finish -> eventChannel.trySend(SendEvent.Finished)
         }
     }
@@ -140,6 +165,7 @@ class SendHandoverViewModel @Inject constructor(
         val phase = mutableState.value.phase
         val handedOverHere = handingOver || phase is SendPhase.Done
         mutableState.update { state ->
+            val ready = if (phase == SendPhase.Loading) SendPhase.Idle else phase
             when {
                 snap == null -> state.copy(phase = SendPhase.NoGame)
 
@@ -154,7 +180,7 @@ class SendHandoverViewModel @Inject constructor(
                         rules = template.rules,
                         templateNames = template.playerNames.size,
                         act = null,
-                        phase = if (phase == SendPhase.Loading) SendPhase.Searching else phase,
+                        phase = ready,
                     )
                 }
 
@@ -165,8 +191,9 @@ class SendHandoverViewModel @Inject constructor(
                         gameTitle = snap.game.title,
                         act = act,
                         rules = snap.game.rules,
+                        players = GameStates.compute(snap).players.count { !it.isVoid },
                         keepIncome = state.keepIncome && act.incomeTakeable > 0,
-                        phase = if (phase == SendPhase.Loading) SendPhase.Searching else phase,
+                        phase = ready,
                     )
                 }
 
@@ -175,24 +202,34 @@ class SendHandoverViewModel @Inject constructor(
                 else -> state.copy(phase = SendPhase.NoGame)
             }
         }
-        if (active && phase == SendPhase.Loading && canTransfer()) start()
+        if (active && phase == SendPhase.Loading && mutableState.value.phase == SendPhase.Idle) start()
+    }
+
+    /** Поиск начинается только из покоя: повторный Activate (поворот, возврат на вкладку) передачу не трогает. */
+    private fun activate() {
+        active = true
+        if (mutableState.value.phase == SendPhase.Idle) start()
+    }
+
+    /** Скрыли вкладку: остановить только поиск/ожидание; идущую или неподтверждённую передачу — нет. */
+    private fun deactivate() {
+        val state = mutableState.value
+        val stoppable = when (val phase = state.phase) {
+            SendPhase.Searching, is SendPhase.Choose, is SendPhase.Connecting, SendPhase.NeedsPermission -> true
+            is SendPhase.Code -> !phase.waitingPeer
+            is SendPhase.Failed -> !phase.ackLost
+            else -> false
+        }
+        if (!stoppable || state.leaveNeedsConfirm || state.busy) return
+        active = false
+        session.cancel()
+        setPhase(SendPhase.Idle)
     }
 
     private fun canTransfer(): Boolean {
         val phase = mutableState.value.phase
         return snapshot != null && phase != SendPhase.NoGame && phase != SendPhase.AlreadyHandedOver &&
-            phase !is SendPhase.Done
-    }
-
-    private fun activate() {
-        active = true
-        if (mutableState.value.phase == SendPhase.Loading) return
-        if (canTransfer()) start()
-    }
-
-    private fun deactivate() {
-        active = false
-        session.cancel()
+            phase !is SendPhase.Done && phase != SendPhase.Loading
     }
 
     /** Проверки по порядку: Play Services → разрешения → геолокация (Android ≤ 11) → поиск. */
@@ -214,9 +251,26 @@ class SendHandoverViewModel @Inject constructor(
         session.discover(snap.game.currentBankerName)
     }
 
-    @Suppress("CyclomaticComplexMethod")
+    private fun onPermissionsResult(result: SendAction.PermissionsResult) {
+        when {
+            result.allGranted -> start()
+            environment.isApproximateLocationOnly() -> setPhase(SendPhase.Failed(SendFailure.APPROXIMATE_LOCATION))
+            result.permanentlyDenied -> setPhase(SendPhase.Failed(SendFailure.PERMISSION_BLOCKED))
+            else -> setPhase(SendPhase.Failed(SendFailure.PERMISSION_DENIED))
+        }
+    }
+
+    /** Вернулись из настроек: доступ выдан — продолжить сами. */
+    private fun onResumed() {
+        val phase = mutableState.value.phase
+        val waitingForAccess = phase == SendPhase.NeedsPermission ||
+            (phase is SendPhase.Failed && phase.reason in ACCESS_FAILURES)
+        if (!active || !waitingForAccess) return
+        if (environment.missingPermissions().isEmpty() && !environment.isLocationServiceRequiredButOff()) start()
+    }
+
     private fun onTransfer(transfer: TransferState) {
-        if (!active && transfer !is TransferState.Done) return
+        if (!active && transfer !is TransferState.Done && transfer !is TransferState.Failed) return
         when (transfer) {
             TransferState.Idle, is TransferState.Advertising, is TransferState.Receiving,
             is TransferState.AwaitingAccept,
@@ -240,28 +294,36 @@ class SendHandoverViewModel @Inject constructor(
             is TransferState.Sending ->
                 setPhase(SendPhase.Sending(transfer.endpoint.name, transfer.progress.fraction))
 
-            is TransferState.AwaitingAck -> setPhase(SendPhase.AwaitingAccept(transfer.endpoint.name))
+            is TransferState.AwaitingAck -> {
+                prepared?.let { delivered += it.handover.id }
+                setPhase(SendPhase.AwaitingAccept(transfer.endpoint.name))
+            }
 
             is TransferState.Done -> when (mutableState.value.kind) {
                 SendKind.HANDOVER -> commitHandover(fromFile = false)
                 SendKind.TEMPLATE -> setPhase(SendPhase.Done(transfer.endpoint.name))
             }
 
-            is TransferState.Failed -> setPhase(
-                when (transfer.reason) {
-                    FailureReason.NEARBY_UNAVAILABLE -> SendPhase.Failed(SendFailure.NO_GMS)
-
-                    FailureReason.PERMISSION_DENIED -> SendPhase.Failed(SendFailure.PERMISSION_DENIED)
-
-                    FailureReason.DECLINED -> SendPhase.Failed(SendFailure.DECLINED)
-
-                    else -> SendPhase.Failed(
-                        SendFailure.CONNECTION,
-                        ackLost = transfer.packageSent && mutableState.value.kind == SendKind.HANDOVER,
-                    )
-                },
-            )
+            is TransferState.Failed -> onFailed(transfer)
         }
+    }
+
+    private fun onFailed(transfer: TransferState.Failed) {
+        val handover = prepared?.takeIf { mutableState.value.kind == SendKind.HANDOVER }
+        val ackLost = handover != null && (transfer.packageSent || handover.handover.id in delivered)
+        val packageMayExist = ackLost || fileExported
+        if (transfer.reason == FailureReason.DECLINED || !packageMayExist) {
+            // Пакет не дошёл или получатель отказался — неподтверждённой передачи нет, акт снова можно менять.
+            forgetSent()
+        }
+        setPhase(
+            when (transfer.reason) {
+                FailureReason.NEARBY_UNAVAILABLE -> SendPhase.Failed(SendFailure.NO_GMS)
+                FailureReason.PERMISSION_DENIED -> SendPhase.Failed(SendFailure.PERMISSION_DENIED)
+                FailureReason.DECLINED -> SendPhase.Failed(SendFailure.DECLINED)
+                else -> SendPhase.Failed(SendFailure.CONNECTION, ackLost = ackLost)
+            },
+        )
     }
 
     private fun sendPackage(peerName: String) {
@@ -272,7 +334,10 @@ class SendHandoverViewModel @Inject constructor(
             setPhase(SendPhase.Failed(SendFailure.BAD_NAME))
             return
         } ?: return
-        session.send(text)
+        viewModelScope.launch {
+            rememberSent(text)
+            session.send(text)
+        }
     }
 
     /** Текст пакета; для передачи посреди игры — с подготовленной (ещё не записанной) передачей. */
@@ -290,8 +355,11 @@ class SendHandoverViewModel @Inject constructor(
     }
 
     private fun prepare(snap: GameSnapshot, toBanker: String): PreparedHandover {
-        val keep = mutableState.value.let { it.keepIncome && it.keepIncomeEnabled }
+        val state = mutableState.value
         val existing = prepared
+        // После отправки доход зафиксирован тем, что ушло.
+        val keep = existing?.takeIf { state.incomeLocked }?.let { it.handover.incomeTaken > 0 }
+            ?: (state.keepIncome && state.keepIncomeEnabled)
         val name = PlayerNames.normalize(toBanker)
         if (existing != null && existing.handover.toBanker == name && existing.senderChange.baseSeq == snap.lastSeq &&
             (existing.handover.incomeTaken > 0) == keep
@@ -299,6 +367,39 @@ class SendHandoverViewModel @Inject constructor(
             return existing
         }
         return Handovers.prepare(snap, toBanker, keep, Stamp.now(clock)).also { prepared = it }
+    }
+
+    /** Пакет уходит: зафиксировать акт на экране и сохранить неподтверждённую передачу на диск. */
+    private suspend fun rememberSent(packageText: String) {
+        val handover = prepared?.takeIf { mutableState.value.kind == SendKind.HANDOVER } ?: return
+        mutableState.update {
+            it.copy(
+                sent = SentHandover(
+                    toBanker = handover.handover.toBanker,
+                    cashHandedOver = handover.handover.cashHandedOver,
+                    incomeTaken = handover.handover.incomeTaken,
+                    entries = handover.outgoing.entries.size,
+                ),
+            )
+        }
+        pendingStore.save(
+            PendingHandover(
+                gameId = handover.handover.gameId.value.toString(),
+                handoverId = handover.handover.id.value.toString(),
+                toBanker = handover.handover.toBanker,
+                cashHandedOver = handover.handover.cashHandedOver,
+                incomeTaken = handover.handover.incomeTaken,
+                baseSeq = handover.senderChange.baseSeq,
+                packageText = packageText,
+            ),
+        )
+    }
+
+    private fun forgetSent() {
+        if (mutableState.value.sent == null) return
+        mutableState.update { it.copy(sent = null) }
+        val id = snapshot?.game?.id ?: return
+        viewModelScope.launch { pendingStore.remove(id) }
     }
 
     private fun sendFile() {
@@ -349,6 +450,10 @@ class SendHandoverViewModel @Inject constructor(
                 return@launch
             }
             val kind = mutableState.value.kind
+            if (kind == SendKind.HANDOVER) {
+                fileExported = true
+                rememberSent(text)
+            }
             mutableState.update {
                 it.copy(busy = false, dialog = if (kind == SendKind.HANDOVER) SendDialog.FileSent else null)
             }
@@ -366,8 +471,9 @@ class SendHandoverViewModel @Inject constructor(
         viewModelScope.launch {
             val phase = try {
                 gameRepository.commit(handover.senderChange)
+                pendingStore.remove(handover.handover.gameId)
                 prepared = null
-                SendPhase.Done(handover.handover.toBanker)
+                SendPhase.Done(handover.handover.toBanker, cash = handover.handover.cashHandedOver)
             } catch (_: CommitRejectedException) {
                 handingOver = false
                 SendPhase.Failed(SendFailure.STALE)
@@ -382,5 +488,14 @@ class SendHandoverViewModel @Inject constructor(
 
     override fun onCleared() {
         session.close()
+    }
+
+    private companion object {
+        val ACCESS_FAILURES = setOf(
+            SendFailure.PERMISSION_DENIED,
+            SendFailure.PERMISSION_BLOCKED,
+            SendFailure.APPROXIMATE_LOCATION,
+            SendFailure.LOCATION_OFF,
+        )
     }
 }

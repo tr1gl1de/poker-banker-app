@@ -381,19 +381,15 @@ fun ActSection(
 
 /** «Передаётся: 6 игроков · 8 300 фишек · 23 записи журнала». */
 @Composable
-fun PayloadLine(act: HandoverAct, modifier: Modifier = Modifier) {
+fun PayloadLine(players: Int, chips: Long, entries: Int, modifier: Modifier = Modifier) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     Text(
         text = stringResource(
             R.string.handover_payload,
-            pluralStringResource(UiR.plurals.players_count, act.playersAtTable, act.playersAtTable),
-            pluralStringResource(
-                UiR.plurals.chips_count,
-                pluralQuantity(act.chipsInPlay),
-                MoneyFormat.number(act.chipsInPlay),
-            ),
-            pluralStringResource(UiR.plurals.entries_count, act.entryCount, act.entryCount),
+            pluralStringResource(UiR.plurals.players_count, players, players),
+            pluralStringResource(UiR.plurals.chips_count, pluralQuantity(chips), MoneyFormat.number(chips)),
+            pluralStringResource(UiR.plurals.entries_count, entries, entries),
         ),
         style = type.ledger,
         color = colors.ledger,
