@@ -118,10 +118,14 @@ wait_for "Начать игру" 15 || {
 check_alive "экран «Новая игра»"
 
 # 3. Банкир → «Начать игру» → стол (navigate(TableRoute(gameId)): data class + Room-транзакция).
-if tap "@empty-edit"; then
+# Пустые поля («Название» на чистых данных бывает пустым, «Банкир» — всегда) заполняются по очереди.
+for _ in 1 2 3; do
+  dump_ui && tap "@empty-edit" || break
+  sleep 1
   adb shell input text "Smoke"
-  if adb shell dumpsys input_method | grep -q "mInputShown=true"; then adb shell input keyevent 4; fi
-fi
+  sleep 1
+done
+if adb shell dumpsys input_method | grep -q "mInputShown=true"; then adb shell input keyevent 4; fi
 sleep 1
 if dump_ui && tap "Начать игру" && wait_for "Игроки" 15; then
   check_alive "стол"

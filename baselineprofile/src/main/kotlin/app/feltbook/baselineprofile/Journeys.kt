@@ -52,10 +52,10 @@ fun MacrobenchmarkScope.openTable() {
         return
     }
     device.wait(Until.hasObject(By.textContains(NEW_GAME_START)), TIMEOUT_MS)
-    // Поля: «Название» (заполнено по умолчанию) и «Банкир» (пусто на чистых данных).
+    // Поля «Название» и «Банкир»: на чистых данных пустыми бывают оба — заполняем все пустые.
     device.findObjects(By.clazz("android.widget.EditText"))
-        .firstOrNull { it.text.isNullOrBlank() }
-        ?.let { it.text = BANKER_NAME }
+        .filter { it.text.isNullOrBlank() }
+        .forEach { it.text = BANKER_NAME }
     device.scrollTo(By.textContains(NEW_GAME_START)).click()
     device.waitForTable()
 }
