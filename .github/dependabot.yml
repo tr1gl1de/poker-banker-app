@@ -15,6 +15,10 @@ updates:
     commit-message:
       prefix: build
     open-pull-requests-limit: 5
+    # CLAUDE.md: тесты — JUnit 5. Мажорные версии JUnit (6.x) не предлагать — переход только через ADR.
+    ignore:
+      - dependency-name: "org.junit*"
+        update-types: ["version-update:semver-major"]
     groups:
       gradle:
         patterns:
