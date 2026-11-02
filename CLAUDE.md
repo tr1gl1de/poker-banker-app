@@ -47,7 +47,7 @@ Kotlin 2.x · Jetpack Compose + Material 3 (BOM, последняя стабил
 :feature:handover    передача комнаты
 ```
 
-Зависимости только вниз: `feature → core:ui, core:domain, core:data`; `core:domain` не зависит ни от чего Android. Пакет — `app.feltbook`.
+Зависимости только вниз: `feature → core:ui, core:domain, core:data` (плюс `:feature:handover → :core:transfer`, `:feature:settings → :core:odds` для пасхалки); `core:domain` не зависит ни от чего Android. Пакет — `app.feltbook`.
 
 ## Команды
 
