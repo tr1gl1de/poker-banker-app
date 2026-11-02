@@ -4,12 +4,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.scale
 
 /**
  * Фон-сукно: `radial-gradient(120% 70% at 50% 0%, feltGlow 0%, felt 45%, feltDeep 100%)` из макетов.
- * Эллипс получаем, растягивая круговой градиент по горизонтали.
+ * Эллипс получаем, растягивая круговой градиент по горизонтали (`scaleX = radiusX / radiusY`).
+ * Прямоугольник рисуется в уже масштабированном пространстве, поэтому его ширина — `width / scaleX`
+ * со сдвигом влево: после масштабирования он ровно покрывает экран (на портретных телефонах
+ * `scaleX < 1`, иначе по бокам оставались полосы сплошного `feltDeep`).
  */
 @Composable
 fun Modifier.feltBackground(): Modifier {
@@ -26,10 +30,13 @@ fun Modifier.feltBackground(): Modifier {
                 center = center,
                 radius = radiusY.coerceAtLeast(1f),
             )
+        val scaleX = radiusX.coerceAtLeast(1f) / radiusY.coerceAtLeast(1f)
+        val scaledWidth = size.width / scaleX
+        val topLeft = Offset(-(scaledWidth - size.width) / 2f, 0f)
+        val scaledSize = Size(scaledWidth, size.height)
         onDrawBehind {
-            drawRect(colors.feltDeep)
-            scale(scaleX = radiusX / radiusY.coerceAtLeast(1f), scaleY = 1f, pivot = center) {
-                drawRect(brush)
+            scale(scaleX = scaleX, scaleY = 1f, pivot = center) {
+                drawRect(brush, topLeft = topLeft, size = scaledSize)
             }
         }
     }

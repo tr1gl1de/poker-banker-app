@@ -23,6 +23,7 @@ dependencies {
     compileOnly(libs.kotlin.gradle.plugin)
     compileOnly(libs.compose.gradle.plugin)
     compileOnly(libs.ksp.gradle.plugin)
+    compileOnly(libs.room.gradle.plugin)
     compileOnly(libs.roborazzi.gradle.plugin)
     compileOnly(libs.ktlint.gradle.plugin)
     compileOnly(libs.detekt.gradle.plugin)
@@ -55,6 +56,10 @@ gradlePlugin {
         register("hilt") {
             id = "feltbook.hilt"
             implementationClass = "HiltConventionPlugin"
+        }
+        register("room") {
+            id = "feltbook.room"
+            implementationClass = "RoomConventionPlugin"
         }
         register("kmpLibrary") {
             id = "feltbook.kmp.library"

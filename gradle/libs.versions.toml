@@ -138,5 +138,6 @@ feltbook-android-library = { id = "feltbook.android.library" }
 feltbook-android-compose = { id = "feltbook.android.compose" }
 feltbook-android-feature = { id = "feltbook.android.feature" }
 feltbook-hilt = { id = "feltbook.hilt" }
+feltbook-room = { id = "feltbook.room" }
 feltbook-kmp-library = { id = "feltbook.kmp.library" }
 feltbook-quality = { id = "feltbook.quality" }

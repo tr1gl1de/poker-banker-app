@@ -1,3 +1,5 @@
+import kotlinx.kover.gradle.plugin.dsl.CoverageUnit
+
 // Чистый Kotlin (KMP, сейчас jvm): модель, правила, движок расчёта. Без Android (ADR 0001).
 plugins {
     alias(libs.plugins.feltbook.kmp.library)
@@ -24,12 +26,15 @@ kotlin {
     }
 }
 
-// Критерий M1: покрытие домена ≥ 95 % (koverVerify входит в check).
+// Критерий M1: покрытие домена ≥ 95 % строк и ≥ 90 % ветвлений (koverVerify входит в check).
 kover {
     reports {
         verify {
-            rule {
-                minBound(95)
+            rule("Покрытие строк") {
+                minBound(95, CoverageUnit.LINE)
+            }
+            rule("Покрытие ветвлений") {
+                minBound(90, CoverageUnit.BRANCH)
             }
         }
     }

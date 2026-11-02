@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,6 +36,13 @@ class FeltbookThemeScreenshotTest {
     fun lightTheme() {
         captureRoboImage { FeltbookTheme(darkTheme = false) { ThemeSpecimen() } }
     }
+
+    /** Весь экран портретного телефона: градиент сукна без боковых полос и швов. */
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun feltBackgroundFullScreenPhone() {
+        captureRoboImage { FeltbookTheme(darkTheme = true) { Box(Modifier.fillMaxSize().feltBackground()) } }
+    }
 }
 
 @Composable
@@ -56,7 +64,7 @@ private fun ThemeSpecimen() {
                 .forEach { Swatch(it) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            with(colors.chips) { listOf(chip500, chip1000, chip2000, chip5000, chip10000) }
+            with(colors.chips) { listOf(chip100, chip500, chip1000, chip2000, chip5000, chip10000) }
                 .forEach { Box(Modifier.size(36.dp).background(it, CircleShape)) }
         }
     }

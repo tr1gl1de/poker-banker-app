@@ -5,3 +5,8 @@ plugins {
 android {
     namespace = "app.feltbook.feature.settings"
 }
+
+feltbookTests {
+    // Заглушка: тестов пока нет, а Hilt/KSP генерируют test-исходники. TODO(M3): убрать, когда появятся тесты.
+    allowNoDiscoveredTests = true
+}

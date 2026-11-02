@@ -54,3 +54,17 @@ style:
     maxLineLength: 120
   WildcardImport:
     active: true
+  ForbiddenImport:
+    # ADR 0001: общий KMP-код (core:domain, core:odds) не зависит от JVM и Android — iOS переиспользует его целиком.
+    active: true
+    includes:
+      - '**/commonMain/**'
+    imports:
+      - value: 'java.*'
+        reason: 'commonMain — только Kotlin Multiplatform (ADR 0001)'
+      - value: 'javax.*'
+        reason: 'commonMain — только Kotlin Multiplatform (ADR 0001)'
+      - value: 'android.*'
+        reason: 'commonMain — без Android (ADR 0001)'
+      - value: 'androidx.*'
+        reason: 'commonMain — без Android (ADR 0001)'

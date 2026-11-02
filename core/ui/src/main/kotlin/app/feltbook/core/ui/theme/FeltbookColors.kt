@@ -65,7 +65,7 @@ data class FeltbookColors(
     val chips: FeltbookChipColors,
 )
 
-/** Цвета фишек-номиналов: DESIGN.md + ADR 0003 (100 — красная, 10 000 — латунь). */
+/** Цвета фишек-номиналов: DESIGN.md + ADR 0003 (100 — `#C2423C` из Icon.dc.html, 10 000 — латунь). */
 @Immutable
 data class FeltbookChipColors(
     val chip100: Color,
@@ -80,7 +80,7 @@ data class FeltbookChipColors(
 
 private val ChipColors =
     FeltbookChipColors(
-        chip100 = Color(0xFFA8322D),
+        chip100 = Color(0xFFC2423C),
         chip500 = Color(0xFF2E7D4F),
         chip1000 = Color(0xFF1C1C1E),
         chip2000 = Color(0xFFA8322D),

@@ -73,24 +73,44 @@ val DefaultFeltbookTypography: FeltbookTypography =
             ),
     )
 
-/** Material 3: display/headline — Playfair Display, title/body/label — IBM Plex Sans. */
-internal fun materialTypography(): Typography {
-    val base = Typography()
-    return Typography(
-        displayLarge = base.displayLarge.copy(fontFamily = PlayfairDisplay),
-        displayMedium = base.displayMedium.copy(fontFamily = PlayfairDisplay),
-        displaySmall = base.displaySmall.copy(fontFamily = PlayfairDisplay),
-        headlineLarge = base.headlineLarge.copy(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold),
-        headlineMedium = base.headlineMedium.copy(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold),
-        headlineSmall = base.headlineSmall.copy(fontFamily = PlayfairDisplay, fontWeight = FontWeight.Bold),
-        titleLarge = base.titleLarge.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-        titleMedium = base.titleMedium.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-        titleSmall = base.titleSmall.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-        bodyLarge = base.bodyLarge.copy(fontFamily = IbmPlexSans),
-        bodyMedium = base.bodyMedium.copy(fontFamily = IbmPlexSans),
-        bodySmall = base.bodySmall.copy(fontFamily = IbmPlexSans),
-        labelLarge = base.labelLarge.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-        labelMedium = base.labelMedium.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-        labelSmall = base.labelSmall.copy(fontFamily = IbmPlexSans, fontWeight = FontWeight.SemiBold),
-    )
-}
+/**
+ * Material 3 целиком на токенах DESIGN.md, размеры — самые частые в макетах (`docs/mockups`):
+ * display/headline — Playfair Display 700, 22–30 sp; title — IBM Plex Sans 600, 15–17 sp;
+ * body — IBM Plex Sans 400, 14–15 sp; label — IBM Plex Sans 600, 12–13 sp.
+ */
+internal fun materialTypography(): Typography = Typography(
+    displayLarge = playfair(30),
+    displayMedium = playfair(28),
+    displaySmall = playfair(26),
+    headlineLarge = playfair(26),
+    headlineMedium = playfair(24),
+    headlineSmall = playfair(22),
+    titleLarge = plexSans(17, FontWeight.SemiBold),
+    titleMedium = plexSans(16, FontWeight.SemiBold),
+    titleSmall = plexSans(15, FontWeight.SemiBold),
+    bodyLarge = plexSans(15, FontWeight.Normal),
+    bodyMedium = plexSans(14, FontWeight.Normal),
+    bodySmall = plexSans(14, FontWeight.Normal),
+    labelLarge = plexSans(13, FontWeight.SemiBold),
+    labelMedium = plexSans(12, FontWeight.SemiBold),
+    labelSmall = plexSans(12, FontWeight.SemiBold),
+)
+
+private fun playfair(size: Int): TextStyle = TextStyle(
+    fontFamily = PlayfairDisplay,
+    fontWeight = FontWeight.Bold,
+    fontSize = size.sp,
+    lineHeight = (size * DISPLAY_LINE_HEIGHT).sp,
+    letterSpacing = 0.sp,
+)
+
+private fun plexSans(size: Int, weight: FontWeight): TextStyle = TextStyle(
+    fontFamily = IbmPlexSans,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = (size * TEXT_LINE_HEIGHT).sp,
+    letterSpacing = 0.sp,
+)
+
+private const val DISPLAY_LINE_HEIGHT = 1.2f
+private const val TEXT_LINE_HEIGHT = 1.35f

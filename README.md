@@ -18,7 +18,7 @@
 | `:core:ui` | тема «Сукно», токены, шрифты, общие компоненты |
 | `:feature:game`, `:feature:settlement`, `:feature:history`, `:feature:settings`, `:feature:handover` | экраны |
 
-Сборка настраивается convention-плагинами из `build-logic/` (`feltbook.android.application`, `feltbook.android.library`, `feltbook.android.compose`, `feltbook.android.feature`, `feltbook.hilt`, `feltbook.kmp.library`, `feltbook.quality`), версии — только в `gradle/libs.versions.toml`.
+Сборка настраивается convention-плагинами из `build-logic/` (`feltbook.android.application`, `feltbook.android.library`, `feltbook.android.compose`, `feltbook.android.feature`, `feltbook.hilt`, `feltbook.room`, `feltbook.kmp.library`, `feltbook.quality`), версии — только в `gradle/libs.versions.toml`.
 
 ## Команды
 
@@ -42,6 +42,10 @@
 - Debug-сборка называется `<версия>-dev.<versionCode>+<sha>` (например `0.1.0-dev.42+abc1234`), ставится рядом с release как «Feltbook dev» (`app.feltbook.dev`).
 - Свежий debug APK — в артефактах каждого прогона [build](https://github.com/tr1gl1de/poker-banker-app/actions/workflows/build.yml): откройте последний зелёный прогон → Artifacts → `feltbook-…apk`.
 - Релиз: тег `vX.Y.Z` (должен совпадать с `feltbook.versionName`) → workflow `release` собирает APK и AAB и публикует их в Releases. Подпись — секретами `FELTBOOK_KEYSTORE_BASE64`, `FELTBOOK_KEYSTORE_PASSWORD`, `FELTBOOK_KEY_ALIAS`, `FELTBOOK_KEY_PASSWORD`; без них сборка без подписи (`-unsigned`).
+
+## Известные ограничения
+
+- detekt 1.23.8 разбирает код компилятором Kotlin 2.0.21 (ADR 0004): синтаксис Kotlin 2.1+ — context parameters, guard conditions в `when`, `$$"…"` — ломает detekt. TODO: перейти на detekt 2.x, когда он станет стабильным.
 
 ## Лицензии
 
