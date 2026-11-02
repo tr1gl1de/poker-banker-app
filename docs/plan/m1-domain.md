@@ -423,7 +423,7 @@ balanceAtExit = outstanding, посчитанный по записям с seq �
                                                                      = «Баланс» ТЗ §3.3 в момент выхода (до расчёта)
 ```
 
-Сессия: с первого действующего `BUY_IN` после последнего действующего `CASH_OUT` игрока. `carriedOver` = `outstanding` по записям игрока с `seq` < начала сессии (долг/переплата прошлых выходов этой же игры). Для первой сессии 0.
+Сессия: с первого действующего `BUY_IN` после последнего действующего `CASH_OUT` игрока. `carriedOver` = `outstanding − (paid_сессии − charged_сессии)`: долг/переплата прошлых выходов этой же игры плюс всё, что после начала сессии не является её покупкой или оплатой (например, выплата прошлого долга банкира). Обычно равно `outstanding` по записям с `seq` < начала сессии; для первой сессии 0. Так `carriedOver + paid − charged = outstanding` всегда.
 
 ### 3.4. Производные по столу
 
@@ -530,6 +530,8 @@ sealed interface DomainError {
     data class PlayersStillPlaying(val playerIds: List<PlayerId>) : DomainError
     data class NotConfirmed(val missing: Set<CloseConfirmation>) : DomainError
     data class BankerNotAPlayer(val playerId: PlayerId) : DomainError
+    /** Приём передачи: локальная копия расходится с входящей (`Imports.plan` дал `Conflict`). Добавлено в M1 (§11). */
+    data class ImportConflict(val reason: ImportConflictReason) : DomainError
 }
 
 enum class NotReversibleReason { ALREADY_REVERSED, IS_REVERSAL, INCOME_TAKEN, GAME_READ_ONLY, NOT_ALLOWED_AFTER_CLOSE }
@@ -635,7 +637,10 @@ data class SessionFigures(
     val chipsBought: Long,
     val charged: Long,
     val paid: Long,
-    /** Долг (< 0) или переплата (> 0) прошлых выходов этой игры, переходящие в этот выход. */
+    /**
+     * Долг (< 0) или переплата (> 0) прошлых выходов этой игры, переходящие в этот выход:
+     * `outstanding − (paid − charged)` — всё, что не входит в покупки и оплаты сессии (§11).
+     */
     val carriedOver: Long,
 )
 
@@ -708,7 +713,7 @@ data class BuyInPayment(val chipsPaid: Boolean, val feesPaid: Boolean) {
 
 /**
  * Итог покупки до подтверждения: «Фишки 2 000 + рейк 200 + сбор 100 = 2 300 ₽».
- * @property playerId null — новый игрок.
+ * @property playerId null — новый игрок; id void-игрока с тем же именем — его «вернут» (см. [Pricing.quoteNewPlayer]).
  * @property isFirstBuyIn у игрока нет действующих BUY_IN в этой игре (строка «Закуп», а не «Докуп»).
  * @property isReturn игрок вышел и возвращается — это докуп (ТЗ §4).
  * @property feeWaivedForBanker сбор не взят, потому что игрок — банкир (строка «без сбора»).
@@ -758,7 +763,9 @@ object Pricing {
 
     /**
      * Котировка первого закупа нового игрока. Дополнительно блокеры имени: пустое, длиннее `PlayerNames.MAX_LENGTH`,
-     * уже есть за этим столом (`NameTaken`, сравнение после `PlayerNames.normalize`; void-игроки тоже считаются — их «возвращают»).
+     * уже есть за этим столом (`NameTaken`, сравнение после `PlayerNames.normalize`). Совпадение с void-игроком — не блокер:
+     * `playerId` котировки = его id, `Commands.addPlayer` его «возвращает» (иначе вернуть void-игрока было бы нечем:
+     * `quoteBuyIn` для void — PlayerNotFound).
      */
     fun quoteNewPlayer(snapshot: GameSnapshot, name: String, chips: Long): BuyInQuote
 }
@@ -1057,7 +1064,7 @@ sealed interface JournalItem {
 }
 
 object Journal {
-    /** Весь журнал игры, новые сверху. */
+    /** Весь журнал игры, новые сверху. Строка акта передачи стоит сразу после записи `handover.ledgerSeq`. */
     fun items(snapshot: GameSnapshot): List<JournalItem>
 
     /** Журнал карточки игрока: операции, где он `playerId` или получатель чаевых. */
@@ -1233,7 +1240,9 @@ object Handovers {
     /**
      * Получатель нажал «Принять». `receiverPlayerId` — «я играю как …» (игрок этой игры) или null.
      * Ставит `currentBankerName = handover.toBanker`, `bankerPlayerId = receiverPlayerId`.
-     * Бросает [DomainRuleViolation]: AnotherGameActive, BankerNotAPlayer; конфликт с локальной копией — см. [Imports.plan].
+     * Бросает [DomainRuleViolation]: AnotherGameActive, BankerNotAPlayer, ImportConflict (конфликт с локальной копией,
+     * см. [Imports.plan]); `IllegalArgumentException`, если `handover` нет в `incoming.handovers`.
+     * Повторный приём того же пакета (Identical) — пустое изменение.
      */
     fun accept(
         incoming: GameSnapshot,
@@ -1518,6 +1527,7 @@ object FeltbookCodec {
 /** SHA-256 на чистом Kotlin (FIPS 180-4), без java.security (ADR 0001). Тесты — векторы NIST: "", "abc", 448-битный, 1 000 000 × 'a'. */
 object Sha256 {
     fun digest(input: ByteArray): ByteArray
+    /** hex (lowercase) от `digest(input)` — значение поля `sha256` конверта. */
     fun hex(input: ByteArray): String
 }
 ```
@@ -1630,3 +1640,16 @@ object Sha256 {
 ## 10. Не входит в `:core:domain`
 
 Форматирование сумм, дат и множественных форм («1 игрок»), тексты, `Clock.System` (кроме `Stamp.now` по умолчанию), Room/DataStore, Nearby, файлы, корутины в расчётах.
+
+## 11. Уточнения при реализации M1 (domain-engine)
+
+Исправления контракта, найденные при реализации; публичный API выше уже обновлён.
+
+| Где | Было | Стало | Почему |
+| --- | --- | --- | --- |
+| `Pricing.quoteNewPlayer` | void-игрок даёт `NameTaken` | не блокер, `quote.playerId` = id void-игрока | иначе `addPlayer` не мог бы «вернуть» void-игрока (он бросает по блокерам котировки), а `buyIn` для void — PlayerNotFound |
+| `DomainError` | — | `ImportConflict(reason)` | `Handovers.accept` должен бросать `DomainRuleViolation` при конфликте с локальной копией, а подходящей ошибки не было |
+| `SessionFigures.carriedOver` | `outstanding` по записям до начала сессии | `outstanding − (paid − charged)` сессии | выплата старого долга банкира после возврата иначе не попадала ни в сессию, ни в перенос, и строки выхода не сходились с балансом |
+| Зависимости модуля | `kotlinx-datetime`, `serialization-core` | `kotlinx-serialization-json` (§0) | §0: datetime не нужен, кодеку нужен json |
+| Мелочи поведения | — | `Money.percentOf`/`divRoundHalfUp` — `require` (отрицательных сумм нет); `CashOuts.roundingTip` — `chips ≥ 0`; F < 0 в котировке выхода — `AmountNotPositive`; `Imports.plan` — `IllegalArgumentException`, если `local` другой игры; `TableSummary.incomeByBanker` всегда содержит текущего банкира (с нулями, если дохода нет); `renamePlayer` в HANDED_OVER — WrongGameStatus; причина отмены — `trim`, пустая → null | не было сказано |
+| Банкир-игрок без закупа | — | не считается «за столом» (`playersAtTable`) и не блокирует закрытие (`PlayersStillPlaying`) | QUESTIONS №15 |
