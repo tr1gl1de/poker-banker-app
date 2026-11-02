@@ -93,8 +93,8 @@ class RareBranchesTest {
             snapshot.copy(entries = snapshot.entries + entry(11, type, dima, amount, game = snapshot.game.id)),
         ).map { it.code }
         assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codesWith(EntryType.CASH_OUT, -1))
-        assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codesWith(EntryType.CASH_OUT, Money.MAX_AMOUNT + 1))
-        assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codesWith(EntryType.BUY_IN, Money.MAX_AMOUNT + 1))
+        assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codesWith(EntryType.CASH_OUT, Money.MAX_TOTAL + 1))
+        assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codesWith(EntryType.BUY_IN, Money.MAX_TOTAL + 1))
         assertEquals(emptyList(), codesWith(EntryType.CASH_OUT, Money.MAX_AMOUNT))
         assertEquals(emptyList(), codesWith(EntryType.BUY_IN, Money.MAX_AMOUNT))
     }

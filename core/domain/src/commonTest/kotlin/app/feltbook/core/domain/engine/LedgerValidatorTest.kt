@@ -102,7 +102,7 @@ class LedgerValidatorTest {
         assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), codes(withEntry(next(EntryType.CASH_OUT, a, -1))))
         assertEquals(
             listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE),
-            codes(withEntry(next(EntryType.PAYOUT, a, Money.MAX_AMOUNT + 1))),
+            codes(withEntry(next(EntryType.PAYOUT, a, Money.MAX_TOTAL + 1))),
         )
         assertTrue(codes(withEntry(next(EntryType.CASH_OUT, a, 0))).isEmpty())
     }

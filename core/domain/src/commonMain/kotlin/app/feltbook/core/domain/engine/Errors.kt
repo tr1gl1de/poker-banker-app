@@ -17,6 +17,9 @@ sealed interface DomainError {
     data class AnotherGameActive(val gameId: GameId) : DomainError
     data class PlayerNotFound(val playerId: PlayerId) : DomainError
     data class PlayerNotPlaying(val playerId: PlayerId, val status: PlayerStatus) : DomainError
+
+    /** Игрок «за столом», но ещё не покупал фишки (банкир-игрок без закупа) — выходить ему не с чем. */
+    data class PlayerNotSeated(val playerId: PlayerId) : DomainError
     data object NameBlank : DomainError
     data object NameTooLong : DomainError
     data object TitleTooLong : DomainError

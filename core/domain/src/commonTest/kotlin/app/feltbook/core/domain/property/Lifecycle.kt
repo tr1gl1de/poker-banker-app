@@ -295,7 +295,7 @@ internal class Lifecycle(private val sim: Sim, private val table: TableActions) 
     @Suppress("CyclomaticComplexMethod", "LongMethod")
     private fun probe(s: GameSnapshot) {
         val state = GameStates.compute(s)
-        val player = state.players.filter { !it.isVoid && it.status == PlayerStatus.PLAYING }.randomOrNull(random)
+        val player = state.players.filter { it.isSeated }.randomOrNull(random)
         val min = s.game.rules.minBuyIn
         val stamp = sim.clock.stamp()
         when (random.nextInt(9)) {

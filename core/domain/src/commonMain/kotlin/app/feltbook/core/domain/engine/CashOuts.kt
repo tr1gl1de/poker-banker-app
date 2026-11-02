@@ -118,6 +118,7 @@ object CashOuts {
         when {
             state == null -> add(DomainError.PlayerNotFound(playerId))
             state.status != PlayerStatus.PLAYING -> add(DomainError.PlayerNotPlaying(playerId, state.status))
+            !state.isSeated -> add(DomainError.PlayerNotSeated(playerId))
         }
         when {
             chips < 0 -> add(DomainError.AmountNotPositive)

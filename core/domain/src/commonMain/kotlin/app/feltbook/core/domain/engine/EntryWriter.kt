@@ -28,6 +28,7 @@ internal class EntryWriter(private val snapshot: GameSnapshot, private val stamp
         note: String? = null,
         earlyExit: Boolean = false,
     ) {
+        if (amount > Money.MAX_TOTAL) violation(DomainError.AmountTooLarge)
         written += LedgerEntry(
             id = EntryId(stamp.nextUuid()),
             gameId = snapshot.game.id,

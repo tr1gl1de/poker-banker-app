@@ -12,7 +12,6 @@ import app.feltbook.core.domain.model.apply
 import app.feltbook.core.domain.transfer.DecodeResult
 import app.feltbook.core.domain.transfer.FeltbookCodec
 import app.feltbook.core.domain.transfer.FeltbookPackage
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -165,7 +164,6 @@ class EdgeCasesTest {
         assertEquals(3 * Money.MAX_AMOUNT, quote.total)
     }
 
-    @Ignore("BUG: закуп ~90 млн+ «Оплачено сейчас» пишет PAYMENT > MAX_AMOUNT — валидатор и экспорт отвергают")
     @Test
     fun `закуп MAX_AMOUNT с оплатой сразу — журнал проходит валидатор и экспортируется`() {
         val table = TestTable()
@@ -174,7 +172,6 @@ class EdgeCasesTest {
         assertRoundTrip(table.snapshot)
     }
 
-    @Ignore("BUG: расчёт при выходе, рейк к отдаче и прощение долга больше MAX_AMOUNT — валидатор отвергает журнал")
     @Test
     fun `расчёт при выходе и отдача рейка больше MAX_AMOUNT — журнал проходит валидатор`() {
         val table = TestTable(rules = GameRules(rakeMode = RakeMode.PERCENT, rakeValue = 100))
@@ -262,5 +259,68 @@ class EdgeCasesTest {
         table.cashOut("Андрей", 0, settlement = SettlementChoice.Partial(1_199))
         assertEquals(1L, table.state.player(id)!!.debt)
         assertEquals(PlayerStatus.LEFT_WITH_DEBT, table.state.player(id)!!.status)
+    }
+
+    @Test
+    fun `прощение всего долга больше MAX_AMOUNT — одной записью, введённая сумма — до MAX_AMOUNT`() {
+        val table = TestTable(rules = GameRules(rakeMode = RakeMode.PERCENT, rakeValue = 100))
+        val id = table.add("Андрей", 60_000_000)
+        table.buy("Андрей", 60_000_000)
+        table.later()
+        table.cashOut("Андрей", 0, settlement = SettlementChoice.None)
+        assertViolation(DomainError.AmountTooLarge) {
+            Commands.forgiveDebt(table.snapshot, id, Money.MAX_AMOUNT + 1, table.clock.stamp())
+        }
+        table.apply(Commands.forgiveDebt(table.snapshot, id, null, table.clock.stamp()))
+        assertEquals(240_000_100L, table.snapshot.entries.last().amount)
+        assertRoundTrip(table.snapshot)
+    }
+
+    @Test
+    fun `запись больше MAX_TOTAL команда не пишет, валидатор не принимает`() {
+        assertEquals(1_000_000_000_000L, Money.MAX_TOTAL)
+        val p = app.feltbook.core.domain.playerId(1)
+        val players =
+            listOf(
+                app.feltbook.core.domain.model.Player(
+                    p,
+                    app.feltbook.core.domain.gameId(1),
+                    "П",
+                    app.feltbook.core.domain.T0,
+                ),
+            )
+        val huge = app.feltbook.core.domain.emptySnapshot().copy(
+            players = players,
+            entries = listOf(app.feltbook.core.domain.entry(1, EntryType.BUY_IN, p, Money.MAX_TOTAL + 1)),
+        )
+        assertEquals(listOf(LedgerProblemCode.AMOUNT_OUT_OF_RANGE), LedgerValidator.validate(huge).map { it.code })
+        val payout = huge.copy(
+            entries = listOf(
+                app.feltbook.core.domain.entry(1, EntryType.BUY_IN, p, 1_000),
+                app.feltbook.core.domain.entry(
+                    2,
+                    EntryType.CASH_OUT,
+                    p,
+                    Money.MAX_TOTAL + 1_000,
+                    op = 2,
+                ),
+            ),
+        )
+        assertViolation(DomainError.AmountTooLarge) {
+            Commands.payRake(
+                huge.copy(
+                    entries = listOf(
+                        app.feltbook.core.domain.entry(
+                            1,
+                            EntryType.RAKE,
+                            p,
+                            Money.MAX_TOTAL + 1,
+                        ),
+                    ),
+                ),
+                app.feltbook.core.domain.TestClock().stamp(),
+            )
+        }
+        assertEquals(Money.MAX_TOTAL + 1_000 - 1_000, GameStates.compute(payout).player(p)!!.owedByBanker)
     }
 }

@@ -210,3 +210,18 @@ class ValidatorReviewTest {
         assertTrue(LedgerValidator.validate(start.snapshot.apply(prepared.senderChange)).isEmpty())
     }
 }
+
+class NotSeatedCashOutTest {
+    @Test
+    fun `банкир-игрок без закупа не может выйти — PlayerNotSeated`() {
+        val table = TestTable(banker = "Андрей", bankerPlays = true)
+        val andrey = table.id("Андрей")
+        val quote = CashOuts.quote(table.snapshot, andrey, 0, null, table.clock.now)
+        assertEquals(listOf<DomainError>(DomainError.PlayerNotSeated(andrey)), quote.blockers)
+        assertViolation(DomainError.PlayerNotSeated(andrey)) { table.cashOut("Андрей", 0) }
+        table.buy("Андрей", 1_000, BuyInPayment.PAID)
+        table.later()
+        table.cashOut("Андрей", 1_000)
+        assertEquals(PlayerStatus.CASHED_OUT, table.state.player(andrey)!!.status)
+    }
+}

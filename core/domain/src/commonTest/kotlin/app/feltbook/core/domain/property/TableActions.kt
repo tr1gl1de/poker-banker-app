@@ -200,7 +200,7 @@ internal class TableActions(private val sim: Sim) {
         val s = sim.activeSnapshot()
         val state = GameStates.compute(s)
         val candidates = state.players.filter {
-            it.status == PlayerStatus.PLAYING && !it.isVoid && (it.isSeated || sim.mode == Mode.CHAOS)
+            it.isSeated // банкир-игрок без закупа выйти не может (PlayerNotSeated)
         }
         val player = candidates.randomOrNull(random) ?: return
         val chips = exitChips(player, state.table.chipsInPlay)

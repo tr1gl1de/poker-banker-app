@@ -206,7 +206,10 @@ object Commands {
             ?: violation(DomainError.PlayerNotFound(playerId))
         if (state.status != PlayerStatus.LEFT_WITH_DEBT) violation(DomainError.NoDebt(playerId))
         val forgiven = amount ?: state.debt
-        amountBlocker(forgiven)?.let { violation(it) }
+        // Введённая сумма — до MAX_AMOUNT; «весь долг» (amount = null) — итоговая запись, предел MAX_TOTAL у
+        //   EntryWriter.
+        if (amount != null) amountBlocker(amount)?.let { violation(it) }
+        if (forgiven <= 0) violation(DomainError.AmountNotPositive)
         if (forgiven > state.debt) violation(DomainError.ForgiveExceedsDebt(state.debt))
         return single(snapshot, stamp, EntryType.DEBT_FORGIVEN, playerId, forgiven)
     }

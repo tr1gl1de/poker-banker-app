@@ -157,9 +157,9 @@ object LedgerValidator {
     }
 
     private fun amountValid(entry: LedgerEntry, minBuyIn: Long): Boolean = when (entry.type) {
-        EntryType.CASH_OUT -> entry.amount in 0..Money.MAX_AMOUNT
-        EntryType.BUY_IN -> entry.amount in minBuyIn..Money.MAX_AMOUNT
-        else -> entry.amount in 1..Money.MAX_AMOUNT
+        EntryType.CASH_OUT -> entry.amount in 0..Money.MAX_TOTAL
+        EntryType.BUY_IN -> entry.amount in minBuyIn..Money.MAX_TOTAL
+        else -> entry.amount in 1..Money.MAX_TOTAL
     }
 
     private val NO_PLAYER = setOf(EntryType.RAKE_PAID, EntryType.INCOME_TAKEN)

@@ -459,6 +459,8 @@ package app.feltbook.core.domain.engine
 object Money {
     /** Верхняя граница любой суммы во входе (1e8 ₽): `amount * 100` заведомо помещается в Long. */
     const val MAX_AMOUNT: Long = 100_000_000L
+    /** Верхняя граница любой записи журнала (1e12 ₽) — для итоговых записей движка; валидатор и кодек. */
+    const val MAX_TOTAL: Long = 1_000_000_000_000L
 
     /**
      * `round(amount * percent / 100)` математически, половина — вверх: `(amount * percent + 50) / 100`.
@@ -504,6 +506,8 @@ sealed interface DomainError {
     data class AnotherGameActive(val gameId: GameId) : DomainError
     data class PlayerNotFound(val playerId: PlayerId) : DomainError
     data class PlayerNotPlaying(val playerId: PlayerId, val status: PlayerStatus) : DomainError
+    /** PLAYING, но без покупок (банкир-игрок без закупа) — выход невозможен. */
+    data class PlayerNotSeated(val playerId: PlayerId) : DomainError
     data object NameBlank : DomainError
     data object NameTooLong : DomainError
     data object TitleTooLong : DomainError
@@ -1687,3 +1691,11 @@ object Sha256 {
 | `ImportConflictReason.LOCAL_NEWER`, `Imports.plan` | входящее старше/равно локальному с другими строками → `LOCAL_NEWER` (отчёт: пропущено); Extend без новых записей — только HANDED_OVER → активная | не переоткрывать закрытые игры и не откатывать имена из старой копии (QUESTIONS №16) |
 | `Suspicion` | порог `chips ≥ 20 000` | пример ТЗ «20 000 фишек — точно?» |
 | `LedgerValidator` | + `DUPLICATE_PLAYER_ID`, `TIP_TO_SELF`, `HANDOVER_INCOME_MISMATCH`, `HANDOVER_SEQ_OUT_OF_RANGE`, `INCOME_TAKEN_REVERSED` | целостность входящих пакетов |
+
+### Итоговые суммы и выход без закупа (по итогам QA M1.9)
+
+| Где | Стало | Почему |
+| --- | --- | --- |
+| `Money.MAX_TOTAL = 1e12` | предел любой записи журнала для валидатора и кодека; `MAX_AMOUNT = 1e8` остаётся пределом ввода (фишки покупки, введённые оплата/выплата/прощение, чаевые, F) | итоговые записи (PAYMENT покупки целиком, расчёт при выходе, RAKE_PAID, INCOME_TAKEN, прощение всего долга) законно больше 1e8; 1e12 × 1e6 записей ≤ 1e18 < `Long.MAX_VALUE` |
+| Команды | запись > `MAX_TOTAL` не создаётся — `AmountTooLarge`; `forgiveDebt(amount = null)` прощает весь долг одной записью (до `MAX_TOTAL`) | журнал приложения всегда проходит свой валидатор и экспорт |
+| `DomainError.PlayerNotSeated(playerId)` | блокер котировки выхода для PLAYING-игрока без покупок (банкир-игрок без закупа) | QUESTIONS №15: выходить ему не с чем |
