@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
 import app.feltbook.core.data.handover.ReceivedTemplateStore
 import app.feltbook.core.domain.engine.GameTemplate
+import app.feltbook.core.domain.engine.Pricing
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.BankerFeeMode
 import app.feltbook.core.domain.model.GameRules
@@ -120,5 +121,29 @@ class NewGameViewModelTest {
         viewModel.onAction(NewGameAction.Start(defaultTitle = "2 ноя, 20:05"))
         assertEquals(active.game.title, viewModel.uiState.value.anotherGameTitle)
         assertEquals(0, repository.commitCount)
+    }
+
+    @Test
+    fun `смена правил по умолчанию после старта не трогает начатую игру — слепок`() = runTest {
+        viewModel.events.test {
+            viewModel.onAction(NewGameAction.Start(defaultTitle = "2 ноя, 20:05"))
+            val id = (awaitItem() as NewGameEvent.Started).gameId.toGameId()
+            assertEquals(rules, repository.snapshot(id).game.rules)
+
+            // «Настройки → Правила по умолчанию»: рейк 20 %, сбор с каждого закупа.
+            settings.update {
+                it.copy(
+                    rulesForNewGame = GameRules.DEFAULT.copy(
+                        rakeValue = 20,
+                        bankerFeeMode = BankerFeeMode.EACH_FIXED,
+                    ),
+                )
+            }
+
+            val game = repository.snapshot(id).game
+            assertEquals(rules, game.rules)
+            // Докуп в идущей игре считается по слепку: 1 000 → рейк 5 % = 50.
+            assertEquals(50L, Pricing.rake(1_000, game.rules))
+        }
     }
 }
