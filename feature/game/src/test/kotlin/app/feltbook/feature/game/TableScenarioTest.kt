@@ -22,6 +22,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
+import app.feltbook.core.data.handover.ReceivedTemplateStore
 import app.feltbook.core.domain.engine.Settlements
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.GameStatus
@@ -120,7 +121,7 @@ class TableScenarioTest {
     @Suppress("LongMethod") // Один сквозной сценарий ТЗ §9 — шаги подряд.
     @Test
     fun spec36EndToEnd() {
-        val newGame = NewGameViewModel(repository, settings, clock)
+        val newGame = NewGameViewModel(repository, settings, clock, ReceivedTemplateStore())
         var gameId by mutableStateOf<String?>(null)
         rule.setContent {
             CompositionLocalProvider(

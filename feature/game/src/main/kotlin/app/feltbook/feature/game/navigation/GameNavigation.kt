@@ -23,6 +23,7 @@ data object NewGameRoute
 data class TableRoute(val gameId: String, val cashOutPlayerId: String? = null)
 
 /** Колбэки навигации экранов вкладки «Игра»; сами переходы описывает `:app`. */
+@Suppress("TooManyFunctions") // По переходу на каждый экран вкладки.
 interface GameNavigator {
     fun openNewGame()
 
@@ -41,6 +42,9 @@ interface GameNavigator {
 
     fun openHandover(gameId: String)
 
+    /** «Принять игру» с Главной. */
+    fun openReceiveHandover()
+
     /** Игры больше нет (удалена/закрыта) — на Главную. */
     fun backToHome()
 
@@ -55,6 +59,7 @@ fun NavGraphBuilder.gameScreens(navigator: GameNavigator) {
             onOpenHistory = navigator::openHistory,
             onOpenGame = navigator::openGameDetail,
             onOpenDebts = navigator::openDebts,
+            onReceiveGame = navigator::openReceiveHandover,
         )
     }
     composable<NewGameRoute> {

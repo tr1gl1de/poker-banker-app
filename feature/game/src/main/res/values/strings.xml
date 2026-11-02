@@ -345,4 +345,6 @@
     <string name="error_no_debt">У игрока нет долга</string>
     <string name="error_forgive_exceeds_debt">Больше долга: %1$s</string>
     <string name="error_stale">Данные обновились — проверьте и повторите</string>
+    <string name="new_game_template_hint">Шаблон от %1$s · игроки: %2$s — посадите их за стол после старта</string>
+    <string name="home_receive_game">Принять игру с другого телефона</string>
 </resources>

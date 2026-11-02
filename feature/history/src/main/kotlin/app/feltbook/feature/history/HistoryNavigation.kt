@@ -49,6 +49,9 @@ interface HistoryNavigator {
      */
     fun gameDeleted()
 
+    /** «Передать шаблон» закрытой игры — экран «Передача комнаты» (`HandoverRoute(gameId)` из `:feature:handover`). */
+    fun openHandoverTemplate(gameId: String)
+
     fun back()
 }
 
@@ -73,6 +76,7 @@ private fun GameDetailDestination(navigator: HistoryNavigator) {
         onBack = navigator::back,
         onOpenTable = navigator::openTable,
         onDeleted = navigator::gameDeleted,
+        onHandoverTemplate = navigator::openHandoverTemplate,
     )
 }
 

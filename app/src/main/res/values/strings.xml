@@ -9,7 +9,5 @@
     <string name="easter_more_taps">Ещё %1$d…</string>
     <string name="easter_unlocked">Секретный стол открыт</string>
     <!-- Заглушки экранов следующих этапов -->
-    <string name="placeholder_soon">Раздел появится на следующем этапе</string>
-    <string name="placeholder_handover">Передача комнаты</string>
     <string name="easter_open">Открыть</string>
 </resources>

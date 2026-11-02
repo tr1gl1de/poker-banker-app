@@ -56,5 +56,8 @@ sealed interface HomeAction {
 
     data object OpenDebts : HomeAction
 
+    /** «Принять игру» — передача комнаты с другого телефона (ТЗ §6). */
+    data object ReceiveGame : HomeAction
+
     data object DismissDialog : HomeAction
 }

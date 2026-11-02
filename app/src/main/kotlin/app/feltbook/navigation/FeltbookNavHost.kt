@@ -3,21 +3,19 @@ package app.feltbook.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
-import app.feltbook.R
 import app.feltbook.feature.game.navigation.GameNavigator
 import app.feltbook.feature.game.navigation.HomeRoute
 import app.feltbook.feature.game.navigation.NewGameRoute
 import app.feltbook.feature.game.navigation.TableRoute
 import app.feltbook.feature.game.navigation.gameScreens
-import app.feltbook.feature.handover.HandoverScreen
+import app.feltbook.feature.handover.HandoverRoute
+import app.feltbook.feature.handover.handoverScreen
 import app.feltbook.feature.history.DebtsRoute
 import app.feltbook.feature.history.GameDetailRoute
 import app.feltbook.feature.history.GameTabGameDetailRoute
@@ -78,6 +76,8 @@ private fun NavHostController.gameNavigator(
 
     override fun openHandover(gameId: String) = navigate(HandoverRoute(gameId))
 
+    override fun openReceiveHandover() = navigate(HandoverRoute()) { launchSingleTop = true }
+
     override fun backToHome() {
         popBackStack<HomeRoute>(inclusive = false)
     }
@@ -120,6 +120,8 @@ private fun NavHostController.historyNavigator(): HistoryNavigator = object : Hi
         if (!showsUndo) openTab(Tab.HISTORY, current = Tab.GAME)
     }
 
+    override fun openHandoverTemplate(gameId: String) = navigate(HandoverRoute(gameId))
+
     override fun back() {
         popBackStack()
     }
@@ -153,13 +155,27 @@ fun FeltbookNavHost(navController: NavHostController, modifier: Modifier = Modif
                 },
             )
             debtsScreen(history)
-            composable<HandoverRoute> {
-                PlaceholderScreen(title = stringResource(R.string.placeholder_handover), onBack = {
-                    navController.popBackStack()
-                }) {
-                    HandoverScreen()
-                }
-            }
+            handoverScreen(
+                onBack = { navController.popBackStack() },
+                onHandedOver = {
+                    navController.navigate(HomeRoute) {
+                        popUpTo<HomeRoute> { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onGameAccepted = { gameId ->
+                    navController.navigate(TableRoute(gameId)) {
+                        popUpTo<HomeRoute> { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onTemplateAccepted = {
+                    navController.navigate(NewGameRoute) {
+                        popUpTo<HomeRoute> { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
         navigation<HistoryGraph>(startDestination = HistoryRoute) {
             historyScreens(history)

@@ -47,8 +47,9 @@
     </plurals>
 
     <!-- Карточка игры [без макета] -->
-    <string name="game_detail_menu_a11y">Ещё: поделиться, переоткрыть, удалить</string>
+    <string name="game_detail_menu_a11y">Ещё: поделиться, передать шаблон, переоткрыть, удалить</string>
     <string name="game_detail_menu_share">Поделиться итогом</string>
+    <string name="game_detail_menu_template">Передать шаблон новому банкиру</string>
     <string name="game_detail_menu_reopen">Переоткрыть для исправления</string>
     <string name="game_detail_menu_delete">Удалить игру…</string>
     <string name="game_detail_reopen_title">Переоткрыть игру?</string>

@@ -1,17 +1,23 @@
 package app.feltbook
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.repository.GameRepository
 import app.feltbook.core.domain.repository.SettingsRepository
+import app.feltbook.core.transfer.file.HandoverImportHandler
+import app.feltbook.feature.handover.HandoverRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -22,12 +28,18 @@ sealed interface ColdStart {
     data class Ready(val activeGameId: String?) : ColdStart
 }
 
-/** Уровень окна: тема, «экран не гаснет», пасхалка, холодный старт. */
+/** Уровень окна: тема, «экран не гаснет», пасхалка, холодный старт, открытие файла `.feltbook` снаружи. */
 @HiltViewModel
 class AppViewModel @Inject constructor(
     gameRepository: GameRepository,
     private val settingsRepository: SettingsRepository,
+    private val importHandler: HandoverImportHandler,
 ) : ViewModel() {
+    private val routeChannel = Channel<HandoverRoute>(Channel.BUFFERED)
+
+    /** Маршрут, который нужно открыть поверх текущего экрана (файл из Telegram, «Файлов», почты). */
+    val pendingRoutes: Flow<HandoverRoute> = routeChannel.receiveAsFlow()
+
     val settings: StateFlow<AppSettings?> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -44,6 +56,17 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             val active = gameRepository.getActiveGame()
             coldStartState.value = ColdStart.Ready(active?.game?.id?.value?.toString())
+        }
+    }
+
+    /**
+     * Файл открыт снаружи: прочитать сразу (временный доступ к `content://` есть, пока жив интент), проверить кодеком
+     * и открыть «Принять игру» в режиме файла. Резервная копия покажет там же подсказку про «Настройки».
+     */
+    fun openIncomingFile(uri: Uri) {
+        viewModelScope.launch {
+            importHandler.open(uri)
+            routeChannel.send(HandoverRoute(fromFile = true))
         }
     }
 

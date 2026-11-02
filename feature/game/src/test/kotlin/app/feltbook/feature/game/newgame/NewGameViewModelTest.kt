@@ -2,6 +2,8 @@ package app.feltbook.feature.game.newgame
 
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
+import app.feltbook.core.data.handover.ReceivedTemplateStore
+import app.feltbook.core.domain.engine.GameTemplate
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.BankerFeeMode
 import app.feltbook.core.domain.model.GameRules
@@ -31,11 +33,22 @@ class NewGameViewModelTest {
     private val repository = FakeGameRepository()
     private val rules = GameRules.DEFAULT.copy(rakeValue = 5)
     private val settings = FakeSettingsRepository(AppSettings(rulesForNewGame = rules, lastBankerName = "Саша"))
-    private val viewModel by lazy { NewGameViewModel(repository, settings, TestClock()) }
+    private val templates = ReceivedTemplateStore()
+    private val viewModel by lazy { NewGameViewModel(repository, settings, TestClock(), templates) }
 
     @After
     fun tearDown() {
         viewModel.viewModelScope.cancel()
+    }
+
+    @Test
+    fun showsReceivedTemplateNamesUntilGameStarts() = runTest {
+        templates.put(GameTemplate("Андрей", rules, listOf("Борис", "Дима")))
+        val state = viewModel.uiState.value
+        assertEquals("Андрей", state.templateFrom)
+        assertEquals(listOf("Борис", "Дима"), state.templateNames)
+        viewModel.onAction(NewGameAction.Start("Игра"))
+        assertEquals(null, templates.template.value)
     }
 
     @Test

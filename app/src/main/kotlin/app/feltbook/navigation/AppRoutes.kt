@@ -12,6 +12,4 @@ data object HistoryGraph
 @Serializable
 data object SettingsGraph
 
-/** Передача комнаты — заглушка до M5. Маршруты истории, долгов и настроек — в своих feature-модулях. */
-@Serializable
-data class HandoverRoute(val gameId: String? = null)
+// Маршруты экранов (история, долги, настройки, передача комнаты) — в своих feature-модулях.

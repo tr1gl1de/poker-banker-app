@@ -43,6 +43,7 @@ import app.feltbook.core.ui.component.AmountText
 import app.feltbook.core.ui.component.BrassButton
 import app.feltbook.core.ui.component.BrassButtonStyle
 import app.feltbook.core.ui.component.BrassFab
+import app.feltbook.core.ui.component.FeltIconButton
 import app.feltbook.core.ui.component.FeltbookDialog
 import app.feltbook.core.ui.component.SectionHeader
 import app.feltbook.core.ui.format.MoneyFormat
@@ -69,6 +70,7 @@ fun HomeRouteScreen(
     onOpenHistory: () -> Unit,
     onOpenGame: (gameId: String) -> Unit,
     onOpenDebts: () -> Unit,
+    onReceiveGame: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,6 +91,8 @@ fun HomeRouteScreen(
 
                 HomeAction.OpenDebts -> onOpenDebts()
 
+                HomeAction.ReceiveGame -> onReceiveGame()
+
                 HomeAction.DismissDialog -> viewModel.onAction(action)
             }
         },
@@ -104,7 +108,7 @@ fun HomeScreen(state: HomeUiState, onAction: (HomeAction) -> Unit, modifier: Mod
             // Низ — под FAB: 20 над панелью + 56 FAB + 16.
             contentPadding = PaddingValues(bottom = 92.dp),
         ) {
-            item(key = "header") { HomeHeader() }
+            item(key = "header") { HomeHeader(onReceiveGame = { onAction(HomeAction.ReceiveGame) }) }
             state.active?.let { active ->
                 item(key = "active") {
                     ActiveGameCard(active = active, onBack = { onAction(HomeAction.BackToTable) })
@@ -164,7 +168,7 @@ fun HomeScreen(state: HomeUiState, onAction: (HomeAction) -> Unit, modifier: Mod
 }
 
 @Composable
-private fun HomeHeader() {
+private fun HomeHeader(onReceiveGame: () -> Unit) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
     Row(
@@ -176,7 +180,7 @@ private fun HomeHeader() {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FeltbookMark(size = 40.dp)
-        Column {
+        Column(modifier = Modifier.weight(weight = 1f)) {
             Text(text = stringResource(R.string.home_brand), style = type.brand, color = colors.ink)
             Text(
                 text = stringResource(R.string.home_tagline).uppercase(),
@@ -185,6 +189,11 @@ private fun HomeHeader() {
                 modifier = Modifier.padding(top = 4.dp),
             )
         }
+        FeltIconButton(
+            icon = FeltbookIcons.Handover,
+            contentDescription = stringResource(R.string.home_receive_game),
+            onClick = onReceiveGame,
+        )
     }
 }
 

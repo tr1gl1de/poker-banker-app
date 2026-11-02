@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Передача комнаты (ТЗ §6): разрешения Nearby Connections и FileProvider для файла .feltbook.
+  Сливается в манифест :app. INTERNET нет (CLAUDE.md, правило 4); ACCESS_NETWORK_STATE добавляет сама Nearby — допустимо.
+  Runtime-разрешения запрашиваются только в момент передачи (TransferPermissions, экран «Передача комнаты»).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Android ≤ 11: классический Bluetooth. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!--
+      Android 12+: Bluetooth рядом. Без neverForLocation (QUESTIONS №22): с ним Android отфильтровывает
+      BLE-объявления, которыми Nearby находит телефоны. Геолокацию приложение не определяет.
+    -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Wi-Fi (Wi-Fi Direct / точка доступа Nearby). -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+    <!-- Android 13+: Wi-Fi рядом без геолокации. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="33" />
+
+    <!-- Android ≤ 12: поиск по Bluetooth/Wi-Fi требует геолокацию. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="32" />
+
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.bluetooth_le"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.wifi.direct"
+        android:required="false" />
+
+    <application>
+        <!--
+          Файл .feltbook для Sharesheet (FeltbookShare.authority = <applicationId>.feltbook.files).
+          Свой подкласс FileProvider: другой модуль может объявить свой FileProvider без конфликта слияния манифестов.
+        -->
+        <provider
+            android:name=".file.HandoverFileProvider"
+            android:authorities="${applicationId}.feltbook.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/feltbook_shared_files" />
+        </provider>
+    </application>
+</manifest>

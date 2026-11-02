@@ -92,6 +92,9 @@ class GameDetailViewModel @Inject constructor(
 
             GameDetailAction.Share -> eventChannel.trySend(GameDetailEvent.Share)
 
+            // Переход делает экран (нужен колбэк навигации `:app`).
+            GameDetailAction.HandoverTemplate -> Unit
+
             GameDetailAction.Reopen -> openDialog(DetailDialog.Reopen)
 
             GameDetailAction.ConfirmReopen -> reopen()

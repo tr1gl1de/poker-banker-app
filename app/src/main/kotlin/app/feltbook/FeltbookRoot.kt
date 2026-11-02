@@ -39,6 +39,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
@@ -57,6 +59,7 @@ import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 import app.feltbook.feature.game.navigation.HomeRoute
 import app.feltbook.feature.game.navigation.TableRoute
+import app.feltbook.feature.handover.HandoverRoute
 import app.feltbook.feature.history.DebtsRoute
 import app.feltbook.feature.history.HistoryRoute
 import app.feltbook.feature.settings.OddsRoute
@@ -66,6 +69,7 @@ import app.feltbook.navigation.HistoryGraph
 import app.feltbook.navigation.SettingsGraph
 import app.feltbook.navigation.Tab
 import app.feltbook.navigation.openTab
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /** Корень окна: тема из настроек, edge-to-edge, «экран не гаснет», навигация, нижняя панель, пасхалка. */
@@ -86,16 +90,29 @@ fun FeltbookRoot(viewModel: AppViewModel = hiltViewModel()) {
         dynamicColor = settings?.dynamicColor == true,
         confirmHaptics = settings?.haptics != false,
     ) {
-        when (val start = coldStart) {
-            ColdStart.Loading -> Box(Modifier.fillMaxSize().feltBackground())
-
-            is ColdStart.Ready ->
-                AppScaffold(
-                    coldStartGameId = start.activeGameId,
-                    oddsUnlocked = settings?.oddsCalculatorVisible == true,
-                    onUnlockOdds = viewModel::unlockOdds,
-                )
+        // UiAutomator (Baseline Profile, макробенчмарки) видит testTag как resource-id.
+        Box(modifier = Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+            RootContent(
+                coldStart = coldStart,
+                viewModel = viewModel,
+                oddsUnlocked = settings?.oddsCalculatorVisible == true,
+            )
         }
+    }
+}
+
+@Composable
+private fun RootContent(coldStart: ColdStart, viewModel: AppViewModel, oddsUnlocked: Boolean) {
+    when (coldStart) {
+        ColdStart.Loading -> Box(Modifier.fillMaxSize().feltBackground())
+
+        is ColdStart.Ready ->
+            AppScaffold(
+                pendingRoutes = viewModel.pendingRoutes,
+                coldStartGameId = coldStart.activeGameId,
+                oddsUnlocked = oddsUnlocked,
+                onUnlockOdds = viewModel::unlockOdds,
+            )
     }
 }
 
@@ -137,7 +154,12 @@ private const val BAR_ANIMATION_MILLIS = 200
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnlockOdds: () -> Unit) {
+private fun AppScaffold(
+    pendingRoutes: Flow<HandoverRoute>,
+    coldStartGameId: String?,
+    oddsUnlocked: Boolean,
+    onUnlockOdds: () -> Unit,
+) {
     val navController = rememberNavController()
     val entry by navController.currentBackStackEntryAsState()
     val destination = entry?.destination
@@ -155,6 +177,16 @@ private fun AppScaffold(coldStartGameId: String?, oddsUnlocked: Boolean, onUnloc
             navController.navigate(TableRoute(coldStartGameId)) { launchSingleTop = true }
         }
         coldStartHandled = true
+    }
+
+    // Открытый снаружи файл .feltbook — «Принять игру» поверх текущего экрана вкладки «Игра».
+    LaunchedEffect(navController) {
+        pendingRoutes.collect { route ->
+            val current = navController.currentDestination.tab()
+            if (current != Tab.GAME) navController.openTab(Tab.GAME, current = current)
+            // Новый экран приёма: его ViewModel читает только что открытый файл (старый экран приёма — убрать).
+            navController.navigate(route) { popUpTo<HandoverRoute> { inclusive = true } }
+        }
     }
 
     // Стол: панель прячется при прокрутке вниз и возвращается при прокрутке вверх.

@@ -2,6 +2,7 @@ package app.feltbook.feature.game.newgame
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.handover.ReceivedTemplateStore
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.DomainError
 import app.feltbook.core.domain.engine.Money
@@ -46,6 +47,7 @@ class NewGameViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val settingsRepository: SettingsRepository,
     private val clock: Clock,
+    private val templateStore: ReceivedTemplateStore,
 ) : ViewModel() {
     private val state = MutableStateFlow(NewGameUiState(defaultTitleAt = clock.now()))
     val uiState: StateFlow<NewGameUiState> = state.asStateFlow()
@@ -57,9 +59,12 @@ class NewGameViewModel @Inject constructor(
         viewModelScope.launch {
             val settings = settingsRepository.settings.first()
             val rules = settings.rulesForNewGame
+            val template = templateStore.template.value
             state.update {
                 it.copy(
                     loading = false,
+                    templateFrom = template?.fromBanker,
+                    templateNames = template?.playerNames.orEmpty(),
                     bankerName = settings.lastBankerName,
                     bankerPlays = settings.bankerPlays,
                     rules = rules,
@@ -178,6 +183,7 @@ class NewGameViewModel @Inject constructor(
                             bankerPlays = current.bankerPlays,
                         )
                     }
+                    templateStore.clear()
                     state.update { it.copy(busy = false) }
                     change?.let { eventChannel.send(NewGameEvent.Started(it.gameId.key())) }
                 }

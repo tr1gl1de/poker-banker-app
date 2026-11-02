@@ -43,6 +43,9 @@ data class NewGameUiState(
     val anotherGameTitle: String? = null,
     val anotherGameId: String? = null,
     val error: UiText? = null,
+    /** Принятый шаблон (ТЗ §6 сценарий 2): от кого и имена игроков — подсказка, кого посадить за стол. */
+    val templateFrom: String? = null,
+    val templateNames: List<String> = emptyList(),
 ) {
     val feeSegment: FeeSegment
         get() = when {

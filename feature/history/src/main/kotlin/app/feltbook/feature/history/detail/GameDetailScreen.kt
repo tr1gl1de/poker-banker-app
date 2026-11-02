@@ -85,6 +85,7 @@ fun GameDetailRouteScreen(
     onBack: () -> Unit,
     onOpenTable: (gameId: String) -> Unit,
     onDeleted: () -> Unit,
+    onHandoverTemplate: (gameId: String) -> Unit = {},
     viewModel: GameDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -119,7 +120,19 @@ fun GameDetailRouteScreen(
         }
     }
     LaunchedEffect(state.missing) { if (state.missing) back() }
-    GameDetailScreen(state = state, onAction = viewModel::onAction, snackbarHostState = snackbar)
+    GameDetailScreen(
+        state = state,
+        onAction = { action ->
+            if (action ==
+                GameDetailAction.HandoverTemplate
+            ) {
+                onHandoverTemplate(state.gameId)
+            } else {
+                viewModel.onAction(action)
+            }
+        },
+        snackbarHostState = snackbar,
+    )
 }
 
 /** Карточка игры только для чтения [без макета]: шапка как у Итога, блоки итога, игроки, полный журнал. */
@@ -223,6 +236,17 @@ private fun DetailMenu(state: GameDetailUiState, onAction: (GameDetailAction) ->
                     onAction(GameDetailAction.Share)
                 },
             )
+            if (state.canHandoverTemplate) {
+                DropdownMenuItem(
+                    text = {
+                        Text(stringResource(R.string.game_detail_menu_template), style = type.bodyL, color = colors.ink)
+                    },
+                    onClick = {
+                        open = false
+                        onAction(GameDetailAction.HandoverTemplate)
+                    },
+                )
+            }
             if (state.canReopen) {
                 DropdownMenuItem(
                     text = {

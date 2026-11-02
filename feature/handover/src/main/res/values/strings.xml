@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Передача комнаты (m3-ui-spec §11.12 + состояния без макета). Имена — в именительном падеже (QUESTIONS №18). -->
+<resources>
+    <!-- §11.12 дословно; без «среды» (Bluetooth/Wi-Fi Direct): Nearby её не сообщает -->
+    <string name="handover_title">Передача комнаты</string>
+    <string name="handover_back">Назад к столу</string>
+    <string name="handover_give">Отдать игру</string>
+    <string name="handover_receive">Принять игру</string>
+    <string name="handover_device_name">Телефон: %1$s</string>
+    <string name="handover_check_code">Сверьте код на обоих телефонах</string>
+    <string name="handover_code_a11y">Код %1$s</string>
+    <string name="handover_act">♦︎ Акт передачи кассы</string>
+    <string name="handover_cash">Наличные в кассе</string>
+    <string name="handover_rake">Рейк заведению (переходит)</string>
+    <string name="handover_debts">Долги игроков (переходят)</string>
+    <string name="handover_banker_owes">Долг вышедшим (переходит)</string>
+    <string name="handover_my_income">Мой доход банкира</string>
+    <string name="handover_keep_income">Оставить доход себе · %1$s</string>
+    <string name="handover_keep_income_later">Оставить доход себе — после расчёта долгов</string>
+    <string name="handover_cash_to_give">Отдать наличными</string>
+    <string name="handover_payload">Передаётся: %1$s · %2$s · %3$s</string>
+    <string name="handover_hold">Код совпадает — удерживайте</string>
+    <string name="handover_hold_hint">чтобы передать игру</string>
+    <string name="handover_code_mismatch">Код другой — отмена</string>
+    <string name="handover_permission_title">Нужен доступ к Bluetooth и Wi-Fi рядом</string>
+    <string name="handover_permission_body">Игра передаётся напрямую между телефонами, без интернета. Доступ нужен только на время передачи.</string>
+    <string name="handover_permission_allow">Разрешить</string>
+    <string name="handover_searching">Ищем телефон рядом…</string>
+    <string name="handover_searching_hint">Попросите нового банкира открыть «Принять игру»</string>
+    <string name="handover_waiting">Ждём телефон банкира…</string>
+    <string name="handover_connecting">Соединяемся…</string>
+    <string name="handover_sending">Отправляем…</string>
+    <string name="handover_failed">Не получилось передать. Попробуйте ещё раз или отправьте файлом.</string>
+    <string name="handover_send_file">Отправить файлом</string>
+    <string name="handover_file_sent_title">Файл отправлен?</string>
+    <string name="handover_file_sent_body">После подтверждения игра на этом телефоне станет «Передана» — только чтение.</string>
+    <string name="handover_file_not_yet">Ещё нет</string>
+    <string name="handover_file_sent_confirm">Да, отправлен</string>
+    <string name="handover_done">Игра передана</string>
+    <string name="handover_incoming">Игра «%1$s» от %2$s</string>
+    <string name="handover_incoming_players">Игроков за столом</string>
+    <string name="handover_incoming_chips">Фишек в игре</string>
+    <string name="handover_incoming_cash">Касса</string>
+    <string name="handover_play_as">Я играю как…</string>
+    <string name="handover_not_playing">Не играю</string>
+    <string name="handover_accept">Принять игру</string>
+    <string name="handover_error_active">На этом телефоне уже идёт игра — сначала закройте её</string>
+    <string name="handover_error_conflict">Эта игра уже есть на телефоне и её журнал отличается — ничего не изменено</string>
+    <string name="handover_error_invalid">Файл повреждён или из новой версии приложения</string>
+
+    <!-- Состояния без макета (m3-ui-spec §5.10) -->
+    <string name="handover_device_nearby">найден рядом</string>
+    <string name="handover_choose_device">Выберите телефон нового банкира</string>
+    <string name="handover_code_confirm">Код совпадает</string>
+    <string name="handover_waiting_peer_code">Ждём, пока второй телефон подтвердит код</string>
+    <string name="handover_awaiting_accept">Ждём, пока новый банкир примет игру…</string>
+    <string name="handover_receiving">Получаем игру…</string>
+    <string name="handover_progress_a11y">Ход передачи: %1$d %%</string>
+    <string name="handover_retry">Попробовать ещё раз</string>
+    <string name="handover_no_gms">На этом телефоне нет сервисов Google — по воздуху не получится. Передайте игру файлом.</string>
+    <string name="handover_no_gms_receive">На этом телефоне нет сервисов Google. Попросите банкира отправить игру файлом и откройте его здесь.</string>
+    <string name="handover_permission_denied">Без доступа передать по воздуху не получится. Разрешите или отправьте файлом.</string>
+    <string name="handover_permission_denied_receive">Без доступа принять по воздуху не получится. Разрешите или попросите отправить файлом.</string>
+    <string name="handover_location_off">Включите геолокацию: на этой версии Android без неё телефоны рядом не находятся.</string>
+    <string name="handover_declined">Новый банкир не стал принимать игру.</string>
+    <string name="handover_receive_failed">Не получилось принять. Попробуйте ещё раз или попросите отправить файлом.</string>
+    <string name="handover_ack_lost_hint">Связь прервалась после отправки</string>
+    <string name="handover_ack_lost_open">Новый банкир уже принял игру?</string>
+    <string name="handover_ack_lost_title">Новый банкир принял игру?</string>
+    <string name="handover_ack_lost_body">Если игра открылась на его телефоне, подтвердите — здесь она станет «Передана». Если нет — попробуйте ещё раз.</string>
+    <string name="handover_ack_lost_no">Нет</string>
+    <string name="handover_ack_lost_yes">Да, принял</string>
+    <string name="handover_file_to_title">Кому передаёте игру?</string>
+    <string name="handover_file_to_body">Имя нового банкира — оно будет в журнале и акте передачи.</string>
+    <string name="handover_file_to_label">Новый банкир</string>
+    <string name="handover_share_chooser">Отправить игру</string>
+    <string name="handover_already_handed">Игра уже передана — здесь только чтение</string>
+    <string name="handover_no_game">Нет игры, которую можно передать</string>
+    <string name="handover_error_stale">Пока шла передача, игра изменилась. Передайте её заново.</string>
+    <string name="handover_error_name">Нужно имя нового банкира</string>
+    <string name="handover_error_backup">Это резервная копия — восстановите её в «Настройки → Резервная копия»</string>
+    <string name="handover_error_not_feltbook">Это не файл Feltbook</string>
+    <string name="handover_error_newer">Файл из более новой версии — обновите приложение</string>
+    <string name="handover_error_corrupted">Файл повреждён — попросите отправить его ещё раз</string>
+    <string name="handover_done_body">Новый банкир: %1$s. Здесь игра осталась в истории — только чтение.</string>
+    <string name="handover_done_home">На главную</string>
+    <string name="handover_decline">Не принимать</string>
+    <string name="handover_from_file">Файл: %1$s</string>
+    <string name="handover_accept_hint">удерживайте</string>
+
+    <!-- Имя получателя перед рекламой (AppSettings.lastBankerName пустое) -->
+    <string name="handover_your_name_title">Как вас зовут?</string>
+    <string name="handover_your_name_body">Под этим именем телефон увидят рядом, оно же запишется в журнал как имя банкира.</string>
+    <string name="handover_your_name_label">Ваше имя</string>
+    <string name="handover_your_name_start">Ждать телефон банкира</string>
+
+    <!-- Сценарий 2: шаблон после расчёта (QUESTIONS №5) -->
+    <string name="handover_template_title">♦︎ Шаблон новой игры</string>
+    <string name="handover_template_body">Игра закрыта: передаются правила и имена игроков. Долги этой игры остаются у вас.</string>
+    <string name="handover_template_rules">Правила</string>
+    <string name="handover_template_names">Имён игроков</string>
+    <string name="handover_template_hold_hint">чтобы передать шаблон</string>
+    <string name="handover_template_done">Шаблон передан</string>
+    <string name="handover_incoming_template">Шаблон новой игры от %1$s</string>
+    <string name="handover_accept_template">Принять шаблон</string>
+    <string name="handover_rules_summary">рейк %1$s · сбор %2$s</string>
+</resources>

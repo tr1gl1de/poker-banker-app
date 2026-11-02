@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Только папка кэша с файлами передачи: остальная база через FileProvider не видна. -->
+<paths>
+    <cache-path
+        name="handover"
+        path="handover/" />
+</paths>

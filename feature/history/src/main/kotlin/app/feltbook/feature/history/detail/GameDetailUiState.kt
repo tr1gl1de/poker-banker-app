@@ -66,6 +66,9 @@ data class GameDetailUiState(
     /** «Переоткрыть для исправления» — только закрытая игра. */
     val canReopen: Boolean get() = status == GameStatus.CLOSED
 
+    /** «Передать шаблон» — только закрытая игра (QUESTIONS №5). */
+    val canHandoverTemplate: Boolean get() = status == GameStatus.CLOSED
+
     /** Активную игру удаляют со стола, не из истории. */
     val canDelete: Boolean get() = !status.isActive
 
@@ -82,6 +85,9 @@ sealed interface GameDetailAction {
     data object Back : GameDetailAction
 
     data object Share : GameDetailAction
+
+    /** «Передать шаблон» (ТЗ §6 сценарий 2): правила и имена закрытой игры — новому банкиру. */
+    data object HandoverTemplate : GameDetailAction
 
     data object Reopen : GameDetailAction
 

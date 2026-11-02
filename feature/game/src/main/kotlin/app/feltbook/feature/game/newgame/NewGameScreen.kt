@@ -40,12 +40,14 @@ import app.feltbook.core.domain.model.RulesProblem
 import app.feltbook.core.ui.R as UiR
 import app.feltbook.core.ui.component.AmountKeypad
 import app.feltbook.core.ui.component.AmountText
+import app.feltbook.core.ui.component.BannerVariant
 import app.feltbook.core.ui.component.BrassButton
 import app.feltbook.core.ui.component.BrassButtonStyle
 import app.feltbook.core.ui.component.FeltIconButton
 import app.feltbook.core.ui.component.FeltTextField
 import app.feltbook.core.ui.component.FeltbookDialog
 import app.feltbook.core.ui.component.FeltbookSheet
+import app.feltbook.core.ui.component.InfoBanner
 import app.feltbook.core.ui.component.LocalCompactSheet
 import app.feltbook.core.ui.component.SegmentedToggle
 import app.feltbook.core.ui.component.SegmentedToggleStyle
@@ -159,6 +161,16 @@ fun NewGameScreen(
                                 .background(color = colors.card, shape = FeltbookTheme.shapes.field)
                                 .padding(horizontal = 14.dp, vertical = 4.dp),
                     )
+                    if (state.templateNames.isNotEmpty()) {
+                        InfoBanner(
+                            text = stringResource(
+                                R.string.new_game_template_hint,
+                                state.templateFrom.orEmpty(),
+                                state.templateNames.joinToString(separator = ", "),
+                            ),
+                            variant = BannerVariant.Ok,
+                        )
+                    }
                 }
                 RulesSection(state = state, onAction = onAction)
                 state.error?.let { error ->
