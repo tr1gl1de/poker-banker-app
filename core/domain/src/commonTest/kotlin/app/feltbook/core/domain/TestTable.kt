@@ -62,6 +62,16 @@ class TestTable(
         early: Boolean = false,
     ): GameChange = apply(Commands.cashOut(snapshot, id(name), chips, tip, settlement, early, clock.stamp()))
 
+    fun reverse(operation: app.feltbook.core.domain.model.OperationId, reason: String? = null): GameChange =
+        apply(Commands.reverse(snapshot, operation, reason, clock.stamp()))
+
+    /** Операция последней записи журнала, где участвует игрок `name` с типом `type`. */
+    fun lastOp(
+        name: String,
+        type: app.feltbook.core.domain.model.EntryType,
+    ): app.feltbook.core.domain.model.OperationId =
+        snapshot.entries.last { it.playerId == id(name) && it.type == type }.operationId
+
     fun payOut(name: String, amount: Long): GameChange =
         apply(Commands.payOut(snapshot, id(name), amount, clock.stamp()))
 }

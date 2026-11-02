@@ -8,8 +8,10 @@ import app.feltbook.core.domain.model.GameRules
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.LedgerEntry
+import app.feltbook.core.domain.model.OperationId
 import app.feltbook.core.domain.model.Player
 import app.feltbook.core.domain.model.PlayerId
+import app.feltbook.core.domain.model.PlayerStatus
 
 /**
  * Ввод экрана «Новая игра». `title` пустой → движок подставляет переданный `defaultTitle` (дата и время форматирует
@@ -28,6 +30,7 @@ data class NewGameInput(
  * с тем же [DomainError], что показала котировка. `bankerName` новых записей = `game.currentBankerName`,
  * если не сказано иное; `seq` продолжает журнал; одна команда — одна операция (`OperationId`), кроме [cashOut].
  */
+@Suppress("TooManyFunctions") // Публичный набор команд задан контрактом (m1-domain.md §4.7).
 object Commands {
     /**
      * Старт игры: `Game(status = RUNNING)`, правила — слепок `input.rules`; при `bankerPlays` — игрок-банкир без закупа
@@ -163,11 +166,104 @@ object Commands {
         return GameChange(gameId = snapshot.game.id, entries = writer.entries)
     }
 
+    /**
+     * Отмена операции: REVERSAL на каждую её действующую запись (одна новая операция).
+     * Запрещено: операция из REVERSAL, уже отменённая, INCOME_TAKEN, игра HANDED_OVER; в CLOSED — всё, кроме операций
+     * PAYMENT/PAYOUT/DEBT_FORGIVEN (ошибка в погашении долга), для остального игру переоткрывают ([reopen]).
+     */
+    fun reverse(snapshot: GameSnapshot, operationId: OperationId, reason: String?, stamp: Stamp): GameChange {
+        reversalBlocker(snapshot, operationId)?.let { violation(it) }
+        val reversed = Ledger.reversedIds(snapshot.entries)
+        val note = reason?.trim()?.ifEmpty { null }
+        val writer = EntryWriter(snapshot, stamp)
+        val op = writer.operation()
+        snapshot.entries
+            .filter { it.operationId == operationId && it.id !in reversed }
+            .forEach { target ->
+                writer.add(
+                    operation = op,
+                    type = EntryType.REVERSAL,
+                    playerId = target.playerId,
+                    amount = target.amount,
+                    counterparty = target.counterpartyPlayerId,
+                    reverses = target.id,
+                    note = note,
+                )
+            }
+        return GameChange(gameId = snapshot.game.id, entries = writer.entries)
+    }
+
+    /**
+     * «Простить долг»: DEBT_FORGIVEN(amount ?: debt), игрок LEFT_WITH_DEBT, `0 < amount ≤ debt`. Статусы как у [pay].
+     */
+    fun forgiveDebt(snapshot: GameSnapshot, playerId: PlayerId, amount: Long?, stamp: Stamp): GameChange {
+        requireStatus(snapshot, SETTLE_STATUSES)
+        val state = GameStates.compute(snapshot).player(playerId)?.takeUnless { it.isVoid }
+            ?: violation(DomainError.PlayerNotFound(playerId))
+        if (state.status != PlayerStatus.LEFT_WITH_DEBT) violation(DomainError.NoDebt(playerId))
+        val forgiven = amount ?: state.debt
+        amountBlocker(forgiven)?.let { violation(it) }
+        if (forgiven > state.debt) violation(DomainError.ForgiveExceedsDebt(state.debt))
+        return single(snapshot, stamp, EntryType.DEBT_FORGIVEN, playerId, forgiven)
+    }
+
+    /** «Рейк отдан заведению»: RAKE_PAID(rakeDue), `rakeDue > 0`, статус RUNNING или SETTLING. */
+    fun payRake(snapshot: GameSnapshot, stamp: Stamp): GameChange {
+        requireStatus(snapshot, CashOuts.CASH_OUT_STATUSES)
+        val due = GameStates.compute(snapshot).table.rakeDue
+        if (due <= 0) violation(DomainError.NoRakeDue)
+        return single(snapshot, stamp, EntryType.RAKE_PAID, null, due)
+    }
+
     /** «Завершить игру»: RUNNING → SETTLING. */
     fun finish(snapshot: GameSnapshot): GameChange = transition(snapshot, GameStatus.RUNNING, GameStatus.SETTLING)
 
     /** Передумали завершать: SETTLING → RUNNING. */
     fun resume(snapshot: GameSnapshot): GameChange = transition(snapshot, GameStatus.SETTLING, GameStatus.RUNNING)
+
+    /**
+     * «Закрыть игру» (hold): SETTLING → CLOSED, `closedAt = stamp.at`; при `payRake` и `rakeDue > 0` — та же транзакция
+     * пишет RAKE_PAID (кнопка «Рейк отдан · закрыть игру»). Блокеры: PlayersStillPlaying; NotConfirmed, если
+     * `Settlements.compute(...).requiredConfirmations ⊄ acknowledged`.
+     */
+    fun close(
+        snapshot: GameSnapshot,
+        payRake: Boolean,
+        acknowledged: Set<CloseConfirmation>,
+        stamp: Stamp,
+    ): GameChange {
+        requireStatus(snapshot, setOf(GameStatus.SETTLING))
+        val settlement = Settlements.compute(snapshot)
+        settlement.blockers.throwFirst()
+        val missing = settlement.requiredConfirmations - acknowledged
+        if (missing.isNotEmpty()) violation(DomainError.NotConfirmed(missing))
+        val writer = EntryWriter(snapshot, stamp)
+        if (payRake &&
+            settlement.rakeDue > 0
+        ) {
+            writer.add(writer.operation(), EntryType.RAKE_PAID, null, settlement.rakeDue)
+        }
+        return GameChange(
+            gameId = snapshot.game.id,
+            game = snapshot.game.copy(status = GameStatus.CLOSED, closedAt = stamp.at),
+            entries = writer.entries,
+        )
+    }
+
+    /**
+     * «Переоткрыть для исправления»: CLOSED → RUNNING, `closedAt = null`, `editedAfterClose = true`. Блокер: другая
+     * активная игра.
+     */
+    fun reopen(snapshot: GameSnapshot, activeGame: Game?): GameChange {
+        requireStatus(snapshot, setOf(GameStatus.CLOSED))
+        if (activeGame != null &&
+            activeGame.id != snapshot.game.id
+        ) {
+            violation(DomainError.AnotherGameActive(activeGame.id))
+        }
+        val game = snapshot.game.copy(status = GameStatus.RUNNING, closedAt = null, editedAfterClose = true)
+        return GameChange(gameId = snapshot.game.id, game = game)
+    }
 
     /** «Переименовать»: upsert Player с новым именем; блокеры имени как у новой игры. Журнал не меняется. */
     fun renamePlayer(snapshot: GameSnapshot, playerId: PlayerId, newName: String): GameChange {
@@ -251,6 +347,31 @@ private fun settledAmount(balance: Long, settlement: SettlementChoice): Long {
         }
     }
 }
+
+/** Почему операцию нельзя отменить; null — можно (`Commands.reverse`, `JournalItem.Operation.reversible`). */
+internal fun reversalBlocker(snapshot: GameSnapshot, operationId: OperationId): DomainError? {
+    val operation = snapshot.entries.filter { it.operationId == operationId }
+    if (operation.isEmpty()) return DomainError.OperationNotFound(operationId)
+    val reversed = Ledger.reversedIds(snapshot.entries)
+    val status = snapshot.game.status
+    val reason = when {
+        status == GameStatus.HANDED_OVER -> NotReversibleReason.GAME_READ_ONLY
+
+        operation.any { it.type == EntryType.REVERSAL } -> NotReversibleReason.IS_REVERSAL
+
+        operation.any { it.type == EntryType.INCOME_TAKEN } -> NotReversibleReason.INCOME_TAKEN
+
+        operation.all { it.id in reversed } -> NotReversibleReason.ALREADY_REVERSED
+
+        status == GameStatus.CLOSED && operation.any { it.type !in reversibleAfterClose } ->
+            NotReversibleReason.NOT_ALLOWED_AFTER_CLOSE
+
+        else -> null
+    }
+    return reason?.let { DomainError.OperationNotReversible(it) }
+}
+
+private val reversibleAfterClose = setOf(EntryType.PAYMENT, EntryType.PAYOUT, EntryType.DEBT_FORGIVEN)
 
 internal fun requireStatus(snapshot: GameSnapshot, allowed: Set<GameStatus>) {
     val actual = snapshot.game.status
