@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Общие строки :core:ui (m3-ui-spec §11.1, §11.2, §11.16, §11.17). Часть строк используют экранные модули
+    (feature/*), поэтому UnusedResources здесь не показателен. Неразрывный пробел — \u00A0.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="UnusedResources" tools:locale="ru">
+    <!-- §11.1 Общее -->
+    <string name="money_rub">%1$s\u00A0₽</string>
+    <string name="money_rub_signed_minus">−%1$s\u00A0₽</string>
+    <string name="money_rub_signed_plus">+%1$s\u00A0₽</string>
+    <string name="percent">%1$s\u00A0%%</string>
+    <string name="duration_minutes">%1$d\u00A0мин</string>
+    <string name="duration_hours_minutes">%1$d\u00A0ч %2$02d\u00A0мин</string>
+    <string name="date_day_month">%1$d\u00A0%2$s</string>
+    <string name="separator_dot">" · "</string>
+    <string name="common_back">Назад</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_undo">Отменить</string>
+    <string name="common_done">Готово</string>
+    <string name="common_save">Сохранить</string>
+    <string name="common_ok">Понятно</string>
+    <string name="common_more">Ещё</string>
+    <string name="common_dash">—</string>
+    <string name="common_hold_to_confirm">удерживайте, чтобы подтвердить</string>
+    <string name="common_hold">удерживайте</string>
+    <string name="common_confirm_action">Подтвердить</string>
+    <string name="keypad_delete">Стереть</string>
+    <!-- [предл.] долгое нажатие на «Стереть» -->
+    <string name="keypad_clear">Очистить</string>
+    <string name="keypad_triple_zero">000</string>
+    <string name="sheet_discard_title">Отменить ввод?</string>
+    <string name="sheet_discard_body">Введённая сумма %1$s не сохранится.</string>
+    <!-- [предл.] шторка без суммы, но с введёнными данными -->
+    <string name="sheet_discard_body_generic">Введённые данные не сохранятся.</string>
+    <string name="sheet_discard_keep">Продолжить ввод</string>
+    <string name="sheet_discard_confirm">Отменить ввод</string>
+    <string name="badge_rebuy">докуп\u00A0×%1$d</string>
+    <string name="badge_banker">БАНКИР</string>
+    <string name="chip_500">500</string>
+    <string name="chip_1000">1K</string>
+    <string name="chip_2000">2K</string>
+    <string name="chip_5000">5K</string>
+    <string name="chip_last_line1">как</string>
+    <string name="chip_last_line2">прошлый</string>
+    <!-- [предл.] a11y фишки «как прошлый» (m3-ui-spec §4.2) -->
+    <string name="chip_last_a11y">Как прошлый раз, %1$s</string>
+    <string name="suit_spades">♠</string>
+    <string name="suit_hearts">♥</string>
+    <string name="suit_diamonds">♦</string>
+    <string name="suit_clubs">♣</string>
+    <string name="chevron">" ›"</string>
+    <string-array name="months_short">
+        <item>янв</item>
+        <item>фев</item>
+        <item>мар</item>
+        <item>апр</item>
+        <item>мая</item>
+        <item>июн</item>
+        <item>июл</item>
+        <item>авг</item>
+        <item>сен</item>
+        <item>окт</item>
+        <item>ноя</item>
+        <item>дек</item>
+    </string-array>
+    <string-array name="months_full_standalone">
+        <item>Январь</item>
+        <item>Февраль</item>
+        <item>Март</item>
+        <item>Апрель</item>
+        <item>Май</item>
+        <item>Июнь</item>
+        <item>Июль</item>
+        <item>Август</item>
+        <item>Сентябрь</item>
+        <item>Октябрь</item>
+        <item>Ноябрь</item>
+        <item>Декабрь</item>
+    </string-array>
+    <string name="month_year">%1$s %2$d</string>
+
+    <!-- Табло стола (компонент TableScoreboard; в m3-ui-spec §11.6 — table_*). Масть добавляется в коде. -->
+    <string name="scoreboard_a11y">Табло стола</string>
+    <string name="scoreboard_chips_in_play">Фишек в игре</string>
+    <string name="scoreboard_cash_on_hand">Касса на руках</string>
+    <string name="scoreboard_players_owe">Долги игроков</string>
+    <string name="scoreboard_rake">Рейк заведению</string>
+    <string name="scoreboard_banker_income">Банкиру</string>
+    <string name="scoreboard_banker_owes">банкир должен %1$s</string>
+
+    <!-- §11.2 Plurals -->
+    <plurals name="players_count">
+        <item quantity="one">%1$d игрок</item>
+        <item quantity="few">%1$d игрока</item>
+        <item quantity="many">%1$d игроков</item>
+        <item quantity="other">%1$d игрока</item>
+    </plurals>
+    <!-- «6\nигроков» в калькуляторе: число выводится отдельно -->
+    <plurals name="players_word" tools:ignore="ImpliedQuantity">
+        <item quantity="one">игрок</item>
+        <item quantity="few">игрока</item>
+        <item quantity="many">игроков</item>
+        <item quantity="other">игрока</item>
+    </plurals>
+    <plurals name="against_players">
+        <item quantity="one">против %1$d игрока</item>
+        <item quantity="few">против %1$d игроков</item>
+        <item quantity="many">против %1$d игроков</item>
+        <item quantity="other">против %1$d игрока</item>
+    </plurals>
+    <plurals name="rebuys_count">
+        <item quantity="one">%1$d докуп</item>
+        <item quantity="few">%1$d докупа</item>
+        <item quantity="many">%1$d докупов</item>
+        <item quantity="other">%1$d докупа</item>
+    </plurals>
+    <!-- аргумент — отформатированное число, quantity = pluralQuantity(n) -->
+    <plurals name="chips_count">
+        <item quantity="one">%1$s фишка</item>
+        <item quantity="few">%1$s фишки</item>
+        <item quantity="many">%1$s фишек</item>
+        <item quantity="other">%1$s фишки</item>
+    </plurals>
+    <plurals name="games_count">
+        <item quantity="one">%1$d игра</item>
+        <item quantity="few">%1$d игры</item>
+        <item quantity="many">%1$d игр</item>
+        <item quantity="other">%1$d игры</item>
+    </plurals>
+    <plurals name="entries_count">
+        <item quantity="one">%1$d запись журнала</item>
+        <item quantity="few">%1$d записи журнала</item>
+        <item quantity="many">%1$d записей журнала</item>
+        <item quantity="other">%1$d записи журнала</item>
+    </plurals>
+    <plurals name="days_count">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <plurals name="outs_count">
+        <item quantity="one">%1$d аут</item>
+        <item quantity="few">%1$d аута</item>
+        <item quantity="many">%1$d аутов</item>
+        <item quantity="other">%1$d аута</item>
+    </plurals>
+    <plurals name="a11y_rubles">
+        <item quantity="one">%1$s рубль</item>
+        <item quantity="few">%1$s рубля</item>
+        <item quantity="many">%1$s рублей</item>
+        <item quantity="other">%1$s рубля</item>
+    </plurals>
+
+    <!-- §11.16 Ошибки домена -->
+    <string name="error_wrong_status">Сейчас это действие недоступно</string>
+    <string name="error_another_game_active">Уже идёт другая игра</string>
+    <string name="error_player_not_found">Игрок не найден</string>
+    <string name="error_amount_not_positive">Введите сумму</string>
+    <string name="error_amount_too_large">Слишком большая сумма</string>
+    <string name="error_nothing_to_settle">Рассчитываться не с чем</string>
+    <string name="error_partial_out_of_range">Часть — от 1 до %1$s</string>
+    <string name="error_no_rake_due">Рейк уже отдан</string>
+    <string name="error_generic">Не получилось сохранить. Попробуйте ещё раз</string>
+
+    <!-- §11.17 TalkBack; %1$s/%2$s сумм — результат a11yRubles -->
+    <string name="a11y_banker_pays">Банкир выплачивает %1$s</string>
+    <string name="a11y_player_pays">%1$s доплачивает %2$s</string>
+    <string name="a11y_debt">Долг %1$s</string>
+    <string name="a11y_owes_banker">%1$s должен %2$s</string>
+    <string name="a11y_even">Квиты</string>
+    <string name="a11y_minus">минус %1$s</string>
+    <string name="a11y_plus">плюс %1$s</string>
+    <string name="a11y_scoreboard_cell">%1$s, %2$s</string>
+    <string name="a11y_player_row">%1$s, %2$s</string>
+    <string name="a11y_selected">выбрано</string>
+</resources>

@@ -54,10 +54,10 @@ private fun ThemeSpecimen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Пятничный стол", style = type.display, color = colors.ink)
-        Text("8 300 ₽", style = type.amount, color = colors.brassBright)
+        Text("8 300 ₽", style = type.amountBoard, color = colors.brassBright)
         Text("Игроку выплатить +1 250 ₽", style = type.title, color = colors.pay)
         Text("С игрока получить −500 ₽", style = type.body, color = colors.owe)
-        Text("ФИШЕК В ИГРЕ", style = type.label, color = colors.inkSoft)
+        Text("ФИШЕК В ИГРЕ", style = type.overlineBoard, color = colors.inkSoft)
         Text("21:40 · закуп 2 000 · докуп ×2", style = type.ledger, color = colors.ledger)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(colors.feltDeep, colors.sheet, colors.card, colors.feltLight, colors.rail, colors.brass)

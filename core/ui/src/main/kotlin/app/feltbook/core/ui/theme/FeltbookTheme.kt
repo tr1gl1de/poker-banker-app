@@ -17,12 +17,20 @@ val LocalFeltbookColors = staticCompositionLocalOf { FeltbookDarkColors }
 val LocalFeltbookTypography = staticCompositionLocalOf { DefaultFeltbookTypography }
 val LocalFeltbookShapes = staticCompositionLocalOf { FeltbookShapes() }
 
+/** Настройка «Вибрация при подтверждении»: hold-кнопки и клавиатура вибрируют, только если `true`. */
+val LocalConfirmHaptics = staticCompositionLocalOf { true }
+
 /**
  * Тема «Сукно». Тёмная — по умолчанию; светлая «Бумага и латунь» и Dynamic Color — только по настройке.
  * Dynamic Color меняет лишь Material colorScheme, фирменные токены [FeltbookTheme.colors] остаются.
  */
 @Composable
-fun FeltbookTheme(darkTheme: Boolean = true, dynamicColor: Boolean = false, content: @Composable () -> Unit) {
+fun FeltbookTheme(
+    darkTheme: Boolean = true,
+    dynamicColor: Boolean = false,
+    confirmHaptics: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     val colors = if (darkTheme) FeltbookDarkColors else FeltbookLightColors
     val shapes = FeltbookShapes()
     val colorScheme =
@@ -36,6 +44,7 @@ fun FeltbookTheme(darkTheme: Boolean = true, dynamicColor: Boolean = false, cont
         LocalFeltbookColors provides colors,
         LocalFeltbookTypography provides DefaultFeltbookTypography,
         LocalFeltbookShapes provides shapes,
+        LocalConfirmHaptics provides confirmHaptics,
     ) {
         MaterialTheme(
             colorScheme = colorScheme,
