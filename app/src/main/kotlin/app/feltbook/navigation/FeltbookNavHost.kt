@@ -20,6 +20,7 @@ import app.feltbook.feature.game.navigation.gameScreens
 import app.feltbook.feature.handover.HandoverScreen
 import app.feltbook.feature.history.DebtsRoute
 import app.feltbook.feature.history.GameDetailRoute
+import app.feltbook.feature.history.GameTabGameDetailRoute
 import app.feltbook.feature.history.HistoryNavigator
 import app.feltbook.feature.history.HistoryRoute
 import app.feltbook.feature.history.StatsRoute
@@ -86,8 +87,8 @@ private fun NavHostController.gameNavigator(
 }
 
 /**
- * Переходы экранов истории, статистики и долгов. Карточка игры живёт в графе «История» (там же snackbar отмены
- * удаления), поэтому из вкладки «Игра» (Главная, Долги) открывается вкладка «История» с карточкой поверх.
+ * Переходы экранов истории, статистики и долгов. Карточка игры открывается в текущей вкладке: из Истории —
+ * [GameDetailRoute], из Главной и Долгов — [GameTabGameDetailRoute], так «Назад» возвращает на исходный экран.
  */
 private fun NavHostController.historyNavigator(): HistoryNavigator = object : HistoryNavigator {
     private fun inHistory(): Boolean = currentBackStackEntry?.destination?.hierarchy?.any {
@@ -95,8 +96,7 @@ private fun NavHostController.historyNavigator(): HistoryNavigator = object : Hi
     } == true
 
     override fun openGameDetail(gameId: String) {
-        if (!inHistory()) openTab(Tab.HISTORY, current = Tab.GAME)
-        navigate(GameDetailRoute(gameId))
+        if (inHistory()) navigate(GameDetailRoute(gameId)) else navigate(GameTabGameDetailRoute(gameId))
     }
 
     override fun openStats() = navigate(StatsRoute) { launchSingleTop = true }
@@ -107,12 +107,16 @@ private fun NavHostController.historyNavigator(): HistoryNavigator = object : Hi
     }
 
     override fun openTable(gameId: String) {
-        openTab(Tab.GAME, current = Tab.HISTORY)
+        if (inHistory()) openTab(Tab.GAME, current = Tab.HISTORY)
         navigate(TableRoute(gameId)) { launchSingleTop = true }
     }
 
     override fun gameDeleted() {
-        if (!popBackStack<HistoryRoute>(inclusive = false)) openTab(Tab.HISTORY, current = null)
+        val previous = previousBackStackEntry?.destination
+        val showsUndo = previous?.hasRoute<HistoryRoute>() == true || previous?.hasRoute<DebtsRoute>() == true
+        popBackStack()
+        // С Главной snackbar «Отменить» показать негде — он есть на вкладке «История».
+        if (!showsUndo) openTab(Tab.HISTORY, current = Tab.GAME)
     }
 
     override fun back() {

@@ -3,6 +3,7 @@ package app.feltbook.feature.history.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.DomainRuleViolation
 import app.feltbook.core.domain.engine.Stamp
@@ -14,7 +15,6 @@ import app.feltbook.core.ui.format.UiText
 import app.feltbook.core.ui.format.uiText
 import app.feltbook.feature.history.R
 import app.feltbook.feature.history.common.CommitOutcome
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.common.messageOrNull
 import app.feltbook.feature.history.common.toGameId
 import app.feltbook.feature.history.common.toOperationId
@@ -148,8 +148,13 @@ class GameDetailViewModel @Inject constructor(
         val current = snapshot ?: return
         val row = JournalRows.of(current).firstOrNull { it.id == operationId && !it.handover }
         when {
+            current.game.status.isActive ->
+                eventChannel.trySend(GameDetailEvent.Message(uiText(R.string.detail_journal_active_game)))
+
             row == null -> Unit
+
             row.reversible -> inputs.update { it.copy(dialog = DetailDialog.Reverse(operationId, row.title)) }
+
             else -> eventChannel.trySend(GameDetailEvent.Message(notReversibleReason(current, operationId)))
         }
     }

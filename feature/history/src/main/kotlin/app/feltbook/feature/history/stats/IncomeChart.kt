@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.feltbook.core.ui.component.AmountText
 import app.feltbook.core.ui.format.MoneyFormat
 import app.feltbook.core.ui.format.a11yRubles
 import app.feltbook.core.ui.theme.FeltbookTheme
@@ -78,12 +79,13 @@ fun IncomeChart(bars: List<ChartBarUi>, modifier: Modifier = Modifier) {
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(space = 4.dp),
                 ) {
-                    Text(
+                    // AmountText: при 200 % подпись уменьшается (не меньше 12 sp), а не наезжает на соседнюю.
+                    AmountText(
                         text = MoneyFormat.number(bar.value),
                         style = if (last) type.tinyBold else type.tiny,
                         color = if (last) colors.brassBright else colors.ledgerLight,
-                        maxLines = 1,
-                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Box(
                         modifier =
@@ -103,13 +105,11 @@ fun IncomeChart(bars: List<ChartBarUi>, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(space = 10.dp),
         ) {
             bars.forEach { bar ->
-                Text(
+                AmountText(
                     text = bar.label,
                     style = type.ledgerS,
                     color = colors.ledger,
                     textAlign = TextAlign.Center,
-                    maxLines = 1,
-                    softWrap = false,
                     modifier = Modifier.weight(weight = 1f),
                 )
             }

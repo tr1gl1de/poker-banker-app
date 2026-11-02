@@ -70,6 +70,12 @@ data class GameDetailUiState(
     val canDelete: Boolean get() = !status.isActive
 
     val handedOver: Boolean get() = status == GameStatus.HANDED_OVER
+
+    /**
+     * Отмена записей удержанием — только у закрытой игры (погашения и прощения, остальное движок запретит с
+     * причиной). Идущую игру исправляют на столе, переданная — только для чтения.
+     */
+    val canReverse: Boolean get() = status == GameStatus.CLOSED
 }
 
 sealed interface GameDetailAction {

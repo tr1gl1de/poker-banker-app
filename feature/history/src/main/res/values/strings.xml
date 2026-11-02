@@ -25,9 +25,14 @@
         <item quantity="many">Удалить %1$d игр?</item>
         <item quantity="other">Удалить %1$d игры?</item>
     </plurals>
-    <string name="history_delete_body_many">Журналы, расчёты и статистика этих игр исчезнут с телефона. Отменить можно 5 секунд.</string>
-    <string name="history_delete_body_one">Журнал, расчёт и статистика этой игры исчезнут с телефона. Отменить можно 5 секунд.</string>
+    <string name="history_delete_body_many">Журналы, расчёты и статистика этих игр исчезнут с телефона. Отменить можно в течение 5 секунд.</string>
+    <string name="history_delete_body_one">Журнал, расчёт и статистика этой игры исчезнут с телефона. Отменить можно в течение 5 секунд.</string>
     <string name="history_delete_keep">Оставить</string>
+    <string name="history_delete_debts_list">Пропадут и открытые долги: %1$s.</string>
+    <string name="history_delete_debts_total">Пропадут и открытые долги — %1$s на %2$s.</string>
+    <string name="history_delete_failed">Не получилось удалить. Игры остались на месте</string>
+    <string name="history_income">♥︎ %1$s</string>
+    <string name="history_income_a11y">доход банкира %1$s</string>
     <plurals name="history_delete_confirm">
         <item quantity="one">Удалить %1$d игру</item>
         <item quantity="few">Удалить %1$d игры</item>
@@ -102,6 +107,7 @@
     <string name="detail_journal_reverse_reason">Причина (необязательно)</string>
     <string name="detail_journal_reverse_keep">Оставить</string>
     <string name="detail_journal_reverse_confirm">Отменить запись</string>
+    <string name="detail_journal_active_game">Игра идёт — исправляйте записи на столе</string>
     <string name="detail_journal_reversed_snackbar">Запись отменена</string>
     <string name="detail_journal_not_reversible_already">Эта запись уже отменена</string>
     <string name="detail_journal_not_reversible_reversal">Отмену нельзя отменить — повторите операцию</string>
@@ -135,6 +141,7 @@
     <string name="stats_players_hint">результат в фишках</string>
     <string name="stats_empty">За этот период закрытых игр нет</string>
     <string name="stats_player_meta">%1$s · %2$s докупа за игру</string>
+    <string name="stats_player_all_time">за всё время</string>
     <string name="stats_player_games">Игр</string>
     <string name="stats_player_result">Результат</string>
     <string name="stats_player_avg_buy_in">Средний закуп</string>

@@ -2,10 +2,16 @@ package app.feltbook.feature.history.list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.repository.GameRepository
-import app.feltbook.feature.history.common.GameDeletionScheduler
+import app.feltbook.core.ui.format.uiText
+import app.feltbook.feature.history.R
 import app.feltbook.feature.history.common.HistoryZone
+import app.feltbook.feature.history.common.debtsLostWith
+import app.feltbook.feature.history.common.handle
+import app.feltbook.feature.history.common.key
 import app.feltbook.feature.history.common.toGameId
+import app.feltbook.feature.history.common.toUi
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlin.time.Clock
@@ -43,6 +49,14 @@ class HistoryViewModel @Inject constructor(
     private val eventChannel = Channel<HistoryEvent>(Channel.BUFFERED)
     val events: Flow<HistoryEvent> = eventChannel.receiveAsFlow()
 
+    init {
+        viewModelScope.launch {
+            deletions.failures.collect {
+                eventChannel.send(HistoryEvent.Message(uiText(R.string.history_delete_failed)))
+            }
+        }
+    }
+
     val uiState: StateFlow<HistoryUiState> =
         combine(gameRepository.observeAllGames(), deletions.pending, inputs) { games, pending, input ->
             val hidden = pending?.ids.orEmpty()
@@ -55,7 +69,12 @@ class HistoryViewModel @Inject constructor(
                 months = months,
                 selection = selection,
                 deleteDialog = input.deleteDialog && selection.isNotEmpty(),
-                pendingDeletion = pending?.let { PendingDeletionUi(it.token, it.ids.size) },
+                deleteDebts = if (input.deleteDialog) {
+                    debtsLostWith(games.filter { it.game.id.key() in selection })
+                } else {
+                    emptyList()
+                },
+                pendingDeletion = pending?.toUi(),
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), HistoryUiState())
 
@@ -70,9 +89,7 @@ class HistoryViewModel @Inject constructor(
             HistoryAction.ConfirmDelete -> confirmDelete()
             HistoryAction.DismissDialog -> inputs.update { it.copy(deleteDialog = false) }
             HistoryAction.OpenStats -> eventChannel.trySend(HistoryEvent.OpenStats)
-            is HistoryAction.UndoDelete -> viewModelScope.launch { deletions.undo(action.token) }
-            is HistoryAction.UndoWindow -> viewModelScope.launch { deletions.extend(action.token, action.millis) }
-            is HistoryAction.SnackbarDismissed -> viewModelScope.launch { deletions.commitNow(action.token) }
+            is HistoryAction.Deletion -> deletions.handle(action.action, viewModelScope)
         }
     }
 

@@ -2,6 +2,7 @@ package app.feltbook.feature.history.debts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.Debts
 import app.feltbook.core.domain.engine.Stamp
@@ -16,12 +17,13 @@ import app.feltbook.core.ui.format.UiText
 import app.feltbook.core.ui.format.uiText
 import app.feltbook.feature.history.R
 import app.feltbook.feature.history.common.CommitOutcome
-import app.feltbook.feature.history.common.GameDeletionScheduler
+import app.feltbook.feature.history.common.handle
 import app.feltbook.feature.history.common.key
 import app.feltbook.feature.history.common.messageOrNull
 import app.feltbook.feature.history.common.toGameId
 import app.feltbook.feature.history.common.toOperationId
 import app.feltbook.feature.history.common.toPlayerId
+import app.feltbook.feature.history.common.toUi
 import app.feltbook.feature.history.common.tryCommit
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -55,13 +57,21 @@ class DebtsViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     names: PlayerNameRepository,
     private val settings: SettingsRepository,
-    deletions: GameDeletionScheduler,
+    private val deletions: GameDeletionScheduler,
     private val clock: Clock,
 ) : ViewModel() {
     private val inputs = MutableStateFlow(DebtsInputs())
 
     private val eventChannel = Channel<DebtsEvent>(Channel.BUFFERED)
     val events: Flow<DebtsEvent> = eventChannel.receiveAsFlow()
+
+    init {
+        viewModelScope.launch {
+            deletions.failures.collect {
+                eventChannel.send(DebtsEvent.Message(uiText(R.string.history_delete_failed)))
+            }
+        }
+    }
 
     val uiState: StateFlow<DebtsUiState> =
         combine(gameRepository.observeAllGames(), names.observeAll(), deletions.pending, inputs) {
@@ -71,8 +81,16 @@ class DebtsViewModel @Inject constructor(
                 input,
             ->
             val hidden = pending?.ids.orEmpty()
-            val debts = Debts.open(games.filter { it.game.id !in hidden }, directory)
-            buildDebtsUiState(debts, clock.now(), input.paySheet, input.forgiveKey, input.busy)
+            val visible = games.filter { it.game.id !in hidden }
+            buildDebtsUiState(
+                debts = Debts.open(visible, directory),
+                now = clock.now(),
+                paySheet = input.paySheet,
+                forgiveKey = input.forgiveKey,
+                busy = input.busy,
+                activeGameIds = visible.filter { it.game.status.isActive }.map { it.game.id.key() }.toSet(),
+                pendingDeletion = pending?.toUi(),
+            )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), DebtsUiState())
 
     @Suppress("CyclomaticComplexMethod") // Плоский разбор действий экрана.
@@ -80,7 +98,11 @@ class DebtsViewModel @Inject constructor(
         when (action) {
             DebtsAction.Back -> eventChannel.trySend(DebtsEvent.Back)
 
-            is DebtsAction.OpenGame -> eventChannel.trySend(DebtsEvent.OpenGame(action.gameId))
+            is DebtsAction.OpenGame -> {
+                val active = uiState.value.cards.any { it.gameId == action.gameId && it.gameActive }
+                val event = if (active) DebtsEvent.OpenTable(action.gameId) else DebtsEvent.OpenGame(action.gameId)
+                eventChannel.trySend(event)
+            }
 
             is DebtsAction.Pay -> card(action.key)?.let { card ->
                 inputs.update { it.copy(paySheet = DebtPaySheetUi(card, AmountEntry.preset(card.amount))) }
@@ -103,6 +125,8 @@ class DebtsViewModel @Inject constructor(
             DebtsAction.DismissDialog -> inputs.update { it.copy(forgiveKey = null) }
 
             is DebtsAction.Undo -> undo(action.token)
+
+            is DebtsAction.Deletion -> deletions.handle(action.action, viewModelScope)
         }
     }
 

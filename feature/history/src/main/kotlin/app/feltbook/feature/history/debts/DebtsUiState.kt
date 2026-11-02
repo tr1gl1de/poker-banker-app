@@ -5,6 +5,8 @@ import app.feltbook.core.domain.engine.OpenDebt
 import app.feltbook.core.ui.component.AmountEntry
 import app.feltbook.core.ui.component.Suit
 import app.feltbook.core.ui.format.UiText
+import app.feltbook.feature.history.common.DeletionAction
+import app.feltbook.feature.history.common.PendingDeletionUi
 import app.feltbook.feature.history.common.key
 import kotlin.time.Instant
 
@@ -21,6 +23,8 @@ data class DebtCardUi(
     val since: Instant,
     val amount: Long,
     val owedAtExit: Long,
+    /** Долг в идущей игре — карточка открывает стол, а не карточку игры. */
+    val gameActive: Boolean = false,
 ) {
     /** «отдал 600 из 1 200» — часть уже погашена. */
     val paidPart: Long get() = (owedAtExit - amount).coerceAtLeast(0L)
@@ -51,6 +55,8 @@ data class DebtsUiState(
     val paySheet: DebtPaySheetUi? = null,
     val forgiveDialog: DebtCardUi? = null,
     val busy: Boolean = false,
+    /** Удаление игры из карточки, открытой отсюда, — snackbar «Отменить» на этом экране. */
+    val pendingDeletion: PendingDeletionUi? = null,
 ) {
     val isEmpty: Boolean get() = !loading && cards.isEmpty()
 }
@@ -82,6 +88,9 @@ sealed interface DebtsAction {
 
     /** «Отменить» в snackbar погашения или прощения — `Commands.reverse` этой операции. */
     data class Undo(val token: DebtsUndo) : DebtsAction
+
+    /** Snackbar отложенного удаления игры. */
+    data class Deletion(val action: DeletionAction) : DebtsAction
 }
 
 /** Какую операцию отменить: запись в старой игре [gameId]. */
@@ -92,6 +101,9 @@ sealed interface DebtsEvent {
     data object Back : DebtsEvent
 
     data class OpenGame(val gameId: String) : DebtsEvent
+
+    /** Долг в идущей игре — на стол. */
+    data class OpenTable(val gameId: String) : DebtsEvent
 
     data class Undoable(val message: UiText, val token: DebtsUndo) : DebtsEvent
 
@@ -107,6 +119,8 @@ fun buildDebtsUiState(
     paySheet: DebtPaySheetUi?,
     forgiveKey: String?,
     busy: Boolean,
+    activeGameIds: Set<String> = emptySet(),
+    pendingDeletion: PendingDeletionUi? = null,
 ): DebtsUiState {
     val cards = debts.map { debt ->
         DebtCardUi(
@@ -120,6 +134,7 @@ fun buildDebtsUiState(
             since = debt.since,
             amount = debt.amount,
             owedAtExit = debt.owedAtExit,
+            gameActive = debt.gameId.key() in activeGameIds,
         )
     }
     val byKey = cards.associateBy { it.key }
@@ -134,5 +149,6 @@ fun buildDebtsUiState(
         paySheet = paySheet?.let { sheet -> byKey[sheet.card.key]?.let { sheet.copy(card = it) } },
         forgiveDialog = forgiveKey?.let { byKey[it] },
         busy = busy,
+        pendingDeletion = pendingDeletion,
     )
 }

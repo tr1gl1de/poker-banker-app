@@ -2,8 +2,8 @@ package app.feltbook.feature.history.stats
 
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.Stats
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.common.PreviewHistoryData
 import app.feltbook.feature.history.testing.FakeGameRepository
 import app.feltbook.feature.history.testing.FakePlayerNameRepository

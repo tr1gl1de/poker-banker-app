@@ -80,6 +80,14 @@
     <string name="settings_restore_storage_failed">Не получилось записать в базу. Ничего не изменено.</string>
     <string name="settings_delete_all_title">Удалить все игры?</string>
     <string name="settings_delete_all_body">Все игры, журналы и статистика исчезнут с телефона. Чтобы подтвердить, введите УДАЛИТЬ.</string>
+    <plurals name="settings_delete_all_games">
+        <item quantity="one">На телефоне %1$d игра.</item>
+        <item quantity="few">На телефоне %1$d игры.</item>
+        <item quantity="many">На телефоне %1$d игр.</item>
+        <item quantity="other">На телефоне %1$d игры.</item>
+    </plurals>
+    <string name="settings_delete_all_active">Удалится и идущая игра «%1$s» — со столом и журналом.</string>
+    <string name="settings_delete_all_debts">Пропадут открытые долги на %1$s.</string>
     <string name="settings_delete_all_field">Подтверждение</string>
     <string name="settings_delete_all_keep">Оставить</string>
     <string name="settings_delete_all_confirm">Удалить все игры</string>

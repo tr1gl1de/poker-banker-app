@@ -123,7 +123,14 @@ sealed interface ImportResultUi {
 
 /** Диалог «Удалить все игры?»: подтверждение — ввод ровно «УДАЛИТЬ». */
 @Immutable
-data class DeleteAllDialogUi(val typed: String = "")
+data class DeleteAllDialogUi(
+    val typed: String = "",
+    /** Идущая игра — тоже будет удалена (решение владельца: «Удалить все» значит все). */
+    val activeGameTitle: String? = null,
+    val gameCount: Int = 0,
+    /** Сумма открытых долгов, которые пропадут вместе с играми. */
+    val openDebtTotal: Long = 0,
+)
 
 @Immutable
 data class SettingsUiState(
@@ -215,10 +222,13 @@ sealed interface SettingsEvent {
     data class Message(val text: UiText) : SettingsEvent
 }
 
-/** Слово-подтверждение «Удалить все игры» (сравнение — точное, без учёта пробелов по краям). */
+/**
+ * Слово-подтверждение «Удалить все игры»: без учёта регистра и пробелов по краям — клавиатура может начать
+ * со строчной буквы даже при `KeyboardCapitalization.Characters`.
+ */
 const val DELETE_ALL_WORD: String = "УДАЛИТЬ"
 
-fun DeleteAllDialogUi.confirmed(): Boolean = typed.trim() == DELETE_ALL_WORD
+fun DeleteAllDialogUi.confirmed(): Boolean = typed.trim().uppercase() == DELETE_ALL_WORD
 
 fun ImportReport.toUi(): ImportResultUi = when (val problem = failure) {
     null -> ImportResultUi.Done(

@@ -2,13 +2,13 @@ package app.feltbook.feature.history.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.PlayerNames
 import app.feltbook.core.domain.repository.GameRepository
 import app.feltbook.core.domain.repository.PlayerNameRepository
 import app.feltbook.core.ui.R as UiR
 import app.feltbook.core.ui.format.uiText
 import app.feltbook.feature.history.R
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.common.HistoryZone
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject

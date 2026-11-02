@@ -68,6 +68,7 @@ import app.feltbook.core.ui.theme.FeltbookDimens
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 import app.feltbook.feature.history.R
+import app.feltbook.feature.history.common.DeletionUndoSnackbar
 import app.feltbook.feature.history.common.DialogAboveBar
 import app.feltbook.feature.history.common.LocalHistoryTimeZone
 import app.feltbook.feature.history.common.PreviewHistoryData
@@ -81,6 +82,7 @@ import kotlinx.coroutines.launch
 fun DebtsRouteScreen(
     onBack: () -> Unit,
     onOpenGame: (gameId: String) -> Unit,
+    onOpenTable: (gameId: String) -> Unit,
     viewModel: DebtsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -90,12 +92,15 @@ fun DebtsRouteScreen(
     val undoLabel = stringResource(UiR.string.common_undo)
     val back by rememberUpdatedState(onBack)
     val openGame by rememberUpdatedState(onOpenGame)
+    val openTable by rememberUpdatedState(onOpenTable)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 DebtsEvent.Back -> back()
 
                 is DebtsEvent.OpenGame -> openGame(event.gameId)
+
+                is DebtsEvent.OpenTable -> openTable(event.gameId)
 
                 is DebtsEvent.Undoable -> scope.launch {
                     val result = snackbar.showUndoSnackbar(event.message.resolve(resources), undoLabel)
@@ -121,6 +126,11 @@ fun DebtsScreen(
 ) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
+    DeletionUndoSnackbar(
+        pending = state.pendingDeletion,
+        hostState = snackbarHostState,
+        onAction = { onAction(DebtsAction.Deletion(it)) },
+    )
     Box(modifier = modifier.fillMaxSize().feltBackground()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),

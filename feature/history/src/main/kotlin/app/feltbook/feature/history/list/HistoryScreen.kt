@@ -31,6 +31,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,21 +68,24 @@ import app.feltbook.core.ui.component.UNDO_SNACKBAR_MILLIS
 import app.feltbook.core.ui.component.showUndoSnackbar
 import app.feltbook.core.ui.format.MoneyFormat
 import app.feltbook.core.ui.format.TimeFormat
+import app.feltbook.core.ui.format.a11yRubles
 import app.feltbook.core.ui.format.formatDuration
 import app.feltbook.core.ui.format.formatMonthYear
 import app.feltbook.core.ui.format.formatShortDate
+import app.feltbook.core.ui.format.resolve
 import app.feltbook.core.ui.icons.FeltbookIcons
 import app.feltbook.core.ui.theme.FeltbookDimens
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 import app.feltbook.feature.history.R
+import app.feltbook.feature.history.common.DebtLineUi
+import app.feltbook.feature.history.common.DeletionUndoSnackbar
 import app.feltbook.feature.history.common.DialogAboveBar
 import app.feltbook.feature.history.common.LocalHistoryTimeZone
 import app.feltbook.feature.history.common.PreviewHistoryData
+import app.feltbook.feature.history.common.debtsConsequence
 import java.time.ZoneOffset
-
-/** Запас к окну отмены: удаление не должно обогнать закрытие snackbar. */
-private const val UNDO_WINDOW_MARGIN_MILLIS = 500L
+import kotlinx.coroutines.launch
 
 /** Маршрут истории: состояние и события [HistoryViewModel], snackbar «Удалено N игр» / «Отменить». */
 @Composable
@@ -91,17 +95,25 @@ fun HistoryRouteScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val resources = LocalResources.current
     val openGame by rememberUpdatedState(onOpenGame)
     val openStats by rememberUpdatedState(onOpenStats)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is HistoryEvent.OpenGame -> openGame(event.gameId)
+
                 HistoryEvent.OpenStats -> openStats()
+
+                is HistoryEvent.Message -> scope.launch {
+                    snackbar.showUndoSnackbar(event.text.resolve(resources), actionLabel = null)
+                }
             }
         }
     }
-    HistoryScreen(state = state, onAction = viewModel::onAction)
+    HistoryScreen(state = state, onAction = viewModel::onAction, snackbarHostState = snackbar)
 }
 
 /** История (m3-ui-spec §5.11): обычный режим и режим выбора, диалог удаления, snackbar отмены. */
@@ -113,7 +125,11 @@ fun HistoryScreen(
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
 ) {
     BackHandler(enabled = state.selecting) { onAction(HistoryAction.ClearSelection) }
-    DeletionSnackbar(pending = state.pendingDeletion, hostState = snackbarHostState, onAction = onAction)
+    DeletionUndoSnackbar(
+        pending = state.pendingDeletion,
+        hostState = snackbarHostState,
+        onAction = { onAction(HistoryAction.Deletion(it)) },
+    )
     Box(modifier = modifier.fillMaxSize().feltBackground()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars),
@@ -161,35 +177,7 @@ fun HistoryScreen(
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 16.dp),
         )
     }
-    if (state.deleteDialog) DeleteDialog(count = state.selection.size, onAction = onAction)
-}
-
-/** Snackbar отложенного удаления: показывается по токену (в т. ч. после удаления из карточки игры). */
-@Composable
-private fun DeletionSnackbar(
-    pending: PendingDeletionUi?,
-    hostState: SnackbarHostState,
-    onAction: (HistoryAction) -> Unit,
-) {
-    val resources = LocalResources.current
-    val accessibility = LocalAccessibilityManager.current
-    val undoLabel = stringResource(UiR.string.common_undo)
-    val action by rememberUpdatedState(onAction)
-    LaunchedEffect(pending?.token) {
-        val current = pending ?: return@LaunchedEffect
-        val window = accessibility?.calculateRecommendedTimeoutMillis(
-            originalTimeoutMillis = UNDO_SNACKBAR_MILLIS,
-            containsIcons = false,
-            containsText = true,
-            containsControls = true,
-        ) ?: UNDO_SNACKBAR_MILLIS
-        action(HistoryAction.UndoWindow(current.token, window + UNDO_WINDOW_MARGIN_MILLIS))
-        val message = resources.getQuantityString(R.plurals.history_deleted_snackbar, current.count, current.count)
-        when (hostState.showUndoSnackbar(message, undoLabel)) {
-            SnackbarResult.ActionPerformed -> action(HistoryAction.UndoDelete(current.token))
-            SnackbarResult.Dismissed -> action(HistoryAction.SnackbarDismissed(current.token))
-        }
-    }
+    if (state.deleteDialog) DeleteDialog(count = state.selection.size, debts = state.deleteDebts, onAction = onAction)
 }
 
 @Composable
@@ -323,6 +311,12 @@ internal fun HistoryRow(
                     style = type.tiny,
                     color = colors.ledger,
                 )
+                AmountText(
+                    text = stringResource(R.string.history_income, MoneyFormat.number(row.bankerIncome)),
+                    style = type.tiny,
+                    color = colors.brassLight,
+                    contentDescription = stringResource(R.string.history_income_a11y, a11yRubles(row.bankerIncome)),
+                )
             }
         },
     ) {
@@ -343,7 +337,8 @@ internal fun HistoryRow(
                 text = historyMeta(row),
                 style = type.ledger,
                 color = colors.ledger,
-                maxLines = 2,
+                // При крупном шрифте мета переносится; «· долг» в конце не должен обрезаться.
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -398,10 +393,11 @@ private fun SelectionBox(selected: Boolean) {
 }
 
 @Composable
-private fun DeleteDialog(count: Int, onAction: (HistoryAction) -> Unit) {
+private fun DeleteDialog(count: Int, debts: List<DebtLineUi>, onAction: (HistoryAction) -> Unit) {
+    val body = stringResource(if (count == 1) R.string.history_delete_body_one else R.string.history_delete_body_many)
     FeltbookDialog(
         title = pluralStringResource(R.plurals.history_delete_title, count, count),
-        body = stringResource(if (count == 1) R.string.history_delete_body_one else R.string.history_delete_body_many),
+        body = listOfNotNull(body, debtsConsequence(debts)).joinToString(separator = "\n\n"),
         safeLabel = stringResource(R.string.history_delete_keep),
         onSafe = { onAction(HistoryAction.DismissDialog) },
         confirmLabel = pluralStringResource(R.plurals.history_delete_confirm, count, count),

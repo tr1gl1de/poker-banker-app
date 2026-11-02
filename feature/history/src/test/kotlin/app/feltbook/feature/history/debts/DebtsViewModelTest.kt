@@ -3,13 +3,13 @@ package app.feltbook.feature.history.debts
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.GameStates
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.EntryType
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.domain.model.PlayerStatus
 import app.feltbook.core.ui.component.AmountEntry
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.common.PreviewHistoryData
 import app.feltbook.feature.history.common.PreviewHistoryData.id
 import app.feltbook.feature.history.testing.FakeGameRepository
@@ -139,6 +139,39 @@ class DebtsViewModelTest {
         val forgiven = repository.snapshot(friday.game.id).entries.last()
         assertEquals(EntryType.DEBT_FORGIVEN, forgiven.type)
         assertEquals(1_053L, forgiven.amount)
+        viewModel.viewModelScope.cancel()
+    }
+
+    @Test
+    fun forgiveReducesOldGameIncomeAndUndoRestoresDebt() = runTest {
+        val repository = FakeGameRepository(listOf(friday))
+        val viewModel = viewModel(repository)
+        val vlad = friday.id("Влад")
+        val before = GameStates.compute(friday).table
+        viewModel.uiState.test {
+            val card = loaded().cards.single()
+            viewModel.events.test {
+                viewModel.onAction(DebtsAction.Forgive(card.key))
+                viewModel.onAction(DebtsAction.ConfirmForgive)
+                val event = awaitItem() as DebtsEvent.Undoable
+
+                val forgiven = GameStates.compute(repository.snapshot(friday.game.id)).table
+                assertEquals(before.bankerIncome - 1_053L, forgiven.bankerIncome)
+                val banker = forgiven.incomeByBanker.single { it.bankerName == friday.game.currentBankerName }
+                assertEquals(1_053L, banker.forgiven)
+                assertEquals(before.incomeByBanker.single().net - 1_053L, banker.net)
+
+                viewModel.onAction(DebtsAction.Undo(event.token))
+                val reverted = repository.snapshot(friday.game.id)
+                assertEquals(EntryType.REVERSAL, reverted.entries.last().type)
+                val state = GameStates.compute(reverted)
+                assertEquals(PlayerStatus.LEFT_WITH_DEBT, state.player(vlad)?.status)
+                assertEquals(1_053L, state.player(vlad)?.debt)
+                assertEquals(before.bankerIncome, state.table.bankerIncome)
+                cancelAndIgnoreRemainingEvents()
+            }
+            cancelAndIgnoreRemainingEvents()
+        }
         viewModel.viewModelScope.cancel()
     }
 }

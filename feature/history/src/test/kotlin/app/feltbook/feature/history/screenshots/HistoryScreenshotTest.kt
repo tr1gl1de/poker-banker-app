@@ -62,7 +62,9 @@ class HistoryScreenshotTest {
         Column(Modifier.fillMaxWidth().feltBackground().padding(all = 16.dp)) {
             FeltbookDialogCard(
                 title = "Удалить 2 игры?",
-                body = "Журналы, расчёты и статистика этих игр исчезнут с телефона. Отменить можно 5 секунд.",
+                body =
+                    "Журналы, расчёты и статистика этих игр исчезнут с телефона. Отменить можно в течение 5 секунд." +
+                        "\n\nПропадут и открытые долги: Влад 1 053 ₽, Борис 600 ₽.",
                 safeLabel = "Оставить",
                 onSafe = {},
                 confirmLabel = "Удалить 2 игры",

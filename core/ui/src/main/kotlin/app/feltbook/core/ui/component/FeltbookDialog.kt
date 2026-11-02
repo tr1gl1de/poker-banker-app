@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -142,9 +144,16 @@ fun FeltbookDialogCard(
                 .padding(all = 18.dp),
         verticalArrangement = Arrangement.spacedBy(space = 10.dp),
     ) {
-        Text(text = title, style = type.dialogTitle, color = colors.ink)
-        Text(text = body, style = type.bodyDialog, color = colors.inkSoft)
-        content?.invoke(this)
+        // Текст и поле прокручиваются, кнопки всегда видны: при открытой клавиатуре и шрифте 200 % поле ввода
+        // иначе сжималось до нулевой высоты.
+        Column(
+            modifier = Modifier.weight(weight = 1f, fill = false).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(space = 10.dp),
+        ) {
+            Text(text = title, style = type.dialogTitle, color = colors.ink)
+            Text(text = body, style = type.bodyDialog, color = colors.inkSoft)
+            content?.invoke(this)
+        }
         FlowRow(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.End),

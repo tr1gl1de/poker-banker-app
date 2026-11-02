@@ -1,5 +1,6 @@
 package app.feltbook.feature.history
 
+import androidx.compose.runtime.Composable
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import app.feltbook.feature.history.debts.DebtsRouteScreen
@@ -15,6 +16,13 @@ data object HistoryRoute
 /** Карточка игры только для чтения; имя поля = аргумент `SavedStateHandle` в `GameDetailViewModel`. */
 @Serializable
 data class GameDetailRoute(val gameId: String)
+
+/**
+ * Та же карточка игры во вкладке «Игра» (из Главной и «Открытых долгов»): «Назад» возвращает туда, откуда открыли.
+ * Отдельный маршрут, а не [GameDetailRoute], — у каждой вкладки свой стек. Имя поля = аргумент `GameDetailViewModel`.
+ */
+@Serializable
+data class GameTabGameDetailRoute(val gameId: String)
 
 /** Статистика (из Истории), панель скрыта. */
 @Serializable
@@ -35,7 +43,10 @@ interface HistoryNavigator {
     /** Игра переоткрыта для исправления — её стол (`TableRoute(gameId)` из `:feature:game`). */
     fun openTable(gameId: String)
 
-    /** Игра удалена из карточки — назад к истории (там snackbar «Удалено 1 игра» / «Отменить»). */
+    /**
+     * Игра удалена из карточки — назад, на экран со snackbar «Удалено 1 игра» / «Отменить» (История или Долги);
+     * если карточку открыли с Главной — на вкладку «История».
+     */
     fun gameDeleted()
 
     fun back()
@@ -52,23 +63,27 @@ fun NavGraphBuilder.historyScreens(navigator: HistoryNavigator) {
     }
 }
 
-/**
- * Карточка игры отдельно — если её нужно открыть и из графа «Игра» (Главная → прошлая игра, Долги → игра долга).
- * Регистрировать один раз на граф: `historyScreens` уже включает её.
- */
-fun NavGraphBuilder.gameDetailScreen(navigator: HistoryNavigator) {
-    composable<GameDetailRoute> {
-        GameDetailRouteScreen(
-            onBack = navigator::back,
-            onOpenTable = navigator::openTable,
-            onDeleted = navigator::gameDeleted,
-        )
-    }
+private fun NavGraphBuilder.gameDetailScreen(navigator: HistoryNavigator) {
+    composable<GameDetailRoute> { GameDetailDestination(navigator) }
 }
 
-/** «Открытые долги» — в граф вкладки «Игра». */
+@Composable
+private fun GameDetailDestination(navigator: HistoryNavigator) {
+    GameDetailRouteScreen(
+        onBack = navigator::back,
+        onOpenTable = navigator::openTable,
+        onDeleted = navigator::gameDeleted,
+    )
+}
+
+/** «Открытые долги» и карточка игры [GameTabGameDetailRoute] — в граф вкладки «Игра». */
 fun NavGraphBuilder.debtsScreen(navigator: HistoryNavigator) {
     composable<DebtsRoute> {
-        DebtsRouteScreen(onBack = navigator::back, onOpenGame = navigator::openGameDetail)
+        DebtsRouteScreen(
+            onBack = navigator::back,
+            onOpenGame = navigator::openGameDetail,
+            onOpenTable = navigator::openTable,
+        )
     }
+    composable<GameTabGameDetailRoute> { GameDetailDestination(navigator) }
 }

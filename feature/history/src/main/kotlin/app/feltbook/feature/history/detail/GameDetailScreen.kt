@@ -71,8 +71,10 @@ import app.feltbook.core.ui.icons.FeltbookIcons
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.core.ui.theme.feltBackground
 import app.feltbook.feature.history.R
+import app.feltbook.feature.history.common.DebtLineUi
 import app.feltbook.feature.history.common.LocalHistoryTimeZone
 import app.feltbook.feature.history.common.PreviewHistoryData
+import app.feltbook.feature.history.common.debtsConsequence
 import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlinx.coroutines.launch
@@ -144,7 +146,7 @@ fun GameDetailScreen(
                 item(key = "journal-title") {
                     SectionHeader(
                         title = stringResource(R.string.detail_journal_title),
-                        trailing = if (state.handedOver) null else stringResource(R.string.detail_journal_hold_hint),
+                        trailing = if (state.canReverse) stringResource(R.string.detail_journal_hold_hint) else null,
                     )
                 }
                 item(key = "journal") {
@@ -402,7 +404,10 @@ private fun DetailDialogs(state: GameDetailUiState, onAction: (GameDetailAction)
 
         DetailDialog.Delete -> FeltbookDialog(
             title = pluralStringResource(R.plurals.history_delete_title, 1, 1),
-            body = stringResource(R.string.history_delete_body_one),
+            body = listOfNotNull(
+                stringResource(R.string.history_delete_body_one),
+                debtsConsequence(state.settlement?.unpaidDebts.orEmpty().map { DebtLineUi(it.name, it.amount) }),
+            ).joinToString(separator = "\n\n"),
             safeLabel = stringResource(R.string.history_delete_keep),
             onSafe = { onAction(GameDetailAction.DismissDialog) },
             confirmLabel = pluralStringResource(R.plurals.history_delete_confirm, 1, 1),

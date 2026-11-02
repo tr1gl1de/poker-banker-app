@@ -2,6 +2,8 @@ package app.feltbook.feature.settings.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.feltbook.core.data.deletion.GameDeletionScheduler
+import app.feltbook.core.domain.engine.Debts
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.BankerFeeMode
 import app.feltbook.core.domain.model.GameRules
@@ -53,6 +55,7 @@ class SettingsViewModel @Inject constructor(
     private val gameRepository: GameRepository,
     private val backup: BackupRepository,
     private val files: BackupFiles,
+    private val deletions: GameDeletionScheduler,
     private val clock: Clock,
     private val zone: SettingsZone,
 ) : ViewModel() {
@@ -116,7 +119,7 @@ class SettingsViewModel @Inject constructor(
 
             SettingsAction.DismissImportResult -> inputs.update { it.copy(importResult = null) }
 
-            SettingsAction.DeleteAll -> inputs.update { it.copy(deleteAllDialog = DeleteAllDialogUi()) }
+            SettingsAction.DeleteAll -> openDeleteAll()
 
             is SettingsAction.DeleteAllInput -> inputs.update { input ->
                 input.copy(deleteAllDialog = input.deleteAllDialog?.copy(typed = action.text.take(MAX_WORD_INPUT)))
@@ -194,6 +197,8 @@ class SettingsViewModel @Inject constructor(
         if (inputs.value.busy) return
         inputs.update { it.copy(busy = true) }
         viewModelScope.launch {
+            // Отложенно удалённые игры не должны попасть в копию — удаляем их сейчас.
+            deletions.flush()
             val ok = safely(failure = uiText(R.string.settings_backup_failed)) {
                 val text = backup.exportAll()
                 files.write(uri, text)
@@ -214,6 +219,7 @@ class SettingsViewModel @Inject constructor(
         if (inputs.value.busy) return
         inputs.update { it.copy(busy = true) }
         viewModelScope.launch {
+            deletions.flush()
             var text: String? = null
             safely(failure = uiText(R.string.settings_restore_read_failed)) { text = files.read(uri) }
             val content = text
@@ -223,12 +229,33 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Диалог называет, что пропадёт кроме истории: идущую игру и открытые долги (последствия удаления). */
+    private fun openDeleteAll() {
+        viewModelScope.launch {
+            val games = gameRepository.observeAllGames().first()
+            val active = games.firstOrNull { it.game.status.isActive }
+            inputs.update {
+                it.copy(
+                    deleteAllDialog = DeleteAllDialogUi(
+                        activeGameTitle = active?.game?.title,
+                        gameCount = games.size,
+                        openDebtTotal = Debts.open(games, emptyList()).sumOf { debt -> debt.amount },
+                    ),
+                )
+            }
+        }
+    }
+
     private fun deleteAll() {
         val dialog = inputs.value.deleteAllDialog ?: return
         if (!dialog.confirmed() || inputs.value.busy) return
         inputs.update { it.copy(deleteAllDialog = null, busy = true) }
         viewModelScope.launch {
-            if (safely { gameRepository.deleteAllGames() }) {
+            if (safely {
+                    deletions.flush()
+                    gameRepository.deleteAllGames()
+                }
+            ) {
                 eventChannel.send(SettingsEvent.Message(uiText(R.string.settings_delete_all_done)))
             }
             inputs.update { it.copy(busy = false) }

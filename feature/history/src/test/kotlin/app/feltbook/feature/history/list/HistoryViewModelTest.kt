@@ -3,10 +3,11 @@ package app.feltbook.feature.history.list
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.ui.component.UNDO_SNACKBAR_MILLIS
-import app.feltbook.feature.history.common.GameDeletionScheduler
+import app.feltbook.feature.history.common.DeletionAction
 import app.feltbook.feature.history.common.PreviewHistoryData
 import app.feltbook.feature.history.common.PreviewHistoryData.add
 import app.feltbook.feature.history.common.key
@@ -121,7 +122,7 @@ class HistoryViewModelTest {
             assertEquals(1, state.pendingDeletion?.count)
             assertTrue("hidden, not deleted", repository.deletedIds.isEmpty())
 
-            viewModel.onAction(HistoryAction.UndoDelete(checkNotNull(state.pendingDeletion).token))
+            viewModel.onAction(HistoryAction.Deletion(DeletionAction.Undo(checkNotNull(state.pendingDeletion).token)))
             state = awaitItem()
             assertTrue(state.months.flatMap { it.rows }.any { it.gameId == first })
             advanceTimeBy(UNDO_SNACKBAR_MILLIS * 2)

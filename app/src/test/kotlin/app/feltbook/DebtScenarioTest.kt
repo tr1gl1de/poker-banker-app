@@ -16,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.engine.Commands
 import app.feltbook.core.domain.engine.Debts
@@ -39,7 +40,6 @@ import app.feltbook.core.ui.component.keypadTestTag
 import app.feltbook.core.ui.theme.FeltbookTheme
 import app.feltbook.feature.game.table.TableScreen
 import app.feltbook.feature.game.table.TableViewModel
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.debts.DebtsScreen
 import app.feltbook.feature.history.debts.DebtsViewModel
 import kotlin.time.Duration.Companion.days

@@ -56,6 +56,7 @@ fun FeltTextField(
     imeAction: ImeAction = ImeAction.Done,
     onImeAction: () -> Unit = {},
     enabled: Boolean = true,
+    capitalization: KeyboardCapitalization = KeyboardCapitalization.Sentences,
 ) {
     val colors = FeltbookTheme.colors
     val type = FeltbookTheme.typography
@@ -79,7 +80,7 @@ fun FeltTextField(
             cursorBrush = SolidColor(colors.brass),
             interactionSource = interaction,
             keyboardOptions =
-                KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = imeAction),
+                KeyboardOptions(capitalization = capitalization, imeAction = imeAction),
             keyboardActions = KeyboardActions(onAny = { onImeAction() }),
             modifier = Modifier.fillMaxWidth().semantics { if (error != null) error(error) },
             decorationBox = { inner ->

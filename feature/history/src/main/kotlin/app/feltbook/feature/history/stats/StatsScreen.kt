@@ -363,14 +363,18 @@ internal fun PlayerSheetContent(sheet: PlayerSheetUi, onAction: (StatsAction) ->
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PlayerAvatar(name = sheet.name, suit = sheet.suit, size = AvatarSize.L)
-            Text(
-                text = sheet.name,
-                style = type.display,
-                color = colors.ink,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(weight = 1f).semantics { heading() },
-            )
+            Column(modifier = Modifier.weight(weight = 1f), verticalArrangement = Arrangement.spacedBy(space = 2.dp)) {
+                Text(
+                    text = sheet.name,
+                    style = type.display,
+                    color = colors.ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.semantics { heading() },
+                )
+                // Список игроков — за выбранный период, шторка — по всем играм (ТЗ §4 п. 4): подпись это говорит.
+                Text(text = stringResource(R.string.stats_player_all_time), style = type.ledger, color = colors.ledger)
+            }
         }
         if (sheet.picking) {
             MergePicker(sheet = sheet, onAction = onAction)
@@ -479,7 +483,7 @@ private fun SheetTiles(sheet: PlayerSheetUi) {
             MetricTile(
                 label = avgLabel,
                 value = MoneyFormat.number(sheet.averageBuyIn),
-                contentDescription = "$avgLabel, ${MoneyFormat.number(sheet.averageBuyIn)}",
+                contentDescription = "$avgLabel, ${a11yRubles(sheet.averageBuyIn)}",
                 modifier = Modifier.weight(weight = 1f),
             )
             MetricTile(

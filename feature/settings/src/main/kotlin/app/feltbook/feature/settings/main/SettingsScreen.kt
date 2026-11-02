@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -526,7 +527,14 @@ internal fun RadioRow(text: String, selected: Boolean, onClick: () -> Unit, subt
 private fun DeleteAllDialog(dialog: DeleteAllDialogUi, onAction: (SettingsAction) -> Unit) {
     FeltbookDialog(
         title = stringResource(R.string.settings_delete_all_title),
-        body = stringResource(R.string.settings_delete_all_body),
+        body = listOfNotNull(
+            pluralStringResource(R.plurals.settings_delete_all_games, dialog.gameCount, dialog.gameCount),
+            dialog.activeGameTitle?.let { stringResource(R.string.settings_delete_all_active, it) },
+            dialog.openDebtTotal.takeIf { it > 0 }?.let {
+                stringResource(R.string.settings_delete_all_debts, MoneyFormat.rub(it))
+            },
+            stringResource(R.string.settings_delete_all_body),
+        ).joinToString(separator = "\n\n"),
         safeLabel = stringResource(R.string.settings_delete_all_keep),
         onSafe = { onAction(SettingsAction.DismissDeleteAll) },
         confirmLabel = stringResource(R.string.settings_delete_all_confirm),
@@ -538,6 +546,7 @@ private fun DeleteAllDialog(dialog: DeleteAllDialogUi, onAction: (SettingsAction
             value = dialog.typed,
             onValueChange = { onAction(SettingsAction.DeleteAllInput(it)) },
             label = stringResource(R.string.settings_delete_all_field),
+            capitalization = KeyboardCapitalization.Characters,
         )
     }
 }

@@ -3,6 +3,7 @@ package app.feltbook.feature.history.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.test
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.BuyInPayment
 import app.feltbook.core.domain.engine.Journal
 import app.feltbook.core.domain.engine.JournalItem
@@ -14,7 +15,6 @@ import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.ui.R as UiR
 import app.feltbook.core.ui.format.UiText
 import app.feltbook.feature.history.R
-import app.feltbook.feature.history.common.GameDeletionScheduler
 import app.feltbook.feature.history.common.PreviewHistoryData
 import app.feltbook.feature.history.common.PreviewHistoryData.add
 import app.feltbook.feature.history.common.key

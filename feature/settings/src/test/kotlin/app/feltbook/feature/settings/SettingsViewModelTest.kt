@@ -3,6 +3,7 @@ package app.feltbook.feature.settings
 import androidx.lifecycle.viewModelScope
 import app.cash.turbine.ReceiveTurbine
 import app.cash.turbine.test
+import app.feltbook.core.data.deletion.GameDeletionScheduler
 import app.feltbook.core.domain.engine.ImportConflictReason
 import app.feltbook.core.domain.model.AppSettings
 import app.feltbook.core.domain.model.BankerFeeMode
@@ -25,6 +26,7 @@ import app.feltbook.feature.settings.main.SettingsViewModel
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -43,7 +45,15 @@ class SettingsViewModelTest {
     private val backup = FakeBackupRepository()
     private val files = FakeBackupFiles()
 
-    private fun viewModel() = SettingsViewModel(settings, games, backup, files, TestClock(), UtcZone)
+    private fun TestScope.viewModel() = SettingsViewModel(
+        settings,
+        games,
+        backup,
+        files,
+        GameDeletionScheduler(games, backgroundScope),
+        TestClock(),
+        UtcZone,
+    )
 
     private suspend fun ReceiveTurbine<SettingsUiState>.loaded(): SettingsUiState {
         var state = awaitItem()
@@ -212,11 +222,11 @@ class SettingsViewModelTest {
             loaded()
             viewModel.onAction(SettingsAction.DeleteAll)
             awaitItem()
-            viewModel.onAction(SettingsAction.DeleteAllInput("удалить"))
+            viewModel.onAction(SettingsAction.DeleteAllInput("удалит"))
             awaitItem()
             viewModel.onAction(SettingsAction.ConfirmDeleteAll)
             assertEquals(0, games.deleteAllCalls)
-            viewModel.onAction(SettingsAction.DeleteAllInput("УДАЛИТЬ"))
+            viewModel.onAction(SettingsAction.DeleteAllInput("уДАЛИТЬ "))
             awaitItem()
             viewModel.onAction(SettingsAction.ConfirmDeleteAll)
             assertEquals(1, games.deleteAllCalls)

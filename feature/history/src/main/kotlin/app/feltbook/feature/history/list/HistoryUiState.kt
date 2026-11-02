@@ -6,6 +6,10 @@ import app.feltbook.core.domain.model.GameId
 import app.feltbook.core.domain.model.GameSnapshot
 import app.feltbook.core.domain.model.GameStatus
 import app.feltbook.core.ui.format.TimeFormat
+import app.feltbook.core.ui.format.UiText
+import app.feltbook.feature.history.common.DebtLineUi
+import app.feltbook.feature.history.common.DeletionAction
+import app.feltbook.feature.history.common.PendingDeletionUi
 import app.feltbook.feature.history.common.key
 import java.time.ZoneId
 import kotlin.time.Duration
@@ -26,6 +30,8 @@ data class HistoryRowUi(
     val rebuyCount: Int,
     val turnover: Long,
     val rake: Long,
+    /** Доход банкира за игру (ТЗ §4 «История» п. 1). */
+    val bankerIncome: Long,
     val hasOpenDebt: Boolean,
     val editedAfterClose: Boolean,
     val handedOver: Boolean,
@@ -47,15 +53,14 @@ data class HistoryUiState(
     val months: List<HistoryMonthUi> = emptyList(),
     val selection: Set<String> = emptySet(),
     val deleteDialog: Boolean = false,
+    /** Открытые долги выбранных игр — последствие удаления в диалоге. */
+    val deleteDebts: List<DebtLineUi> = emptyList(),
     val pendingDeletion: PendingDeletionUi? = null,
 ) {
     val selecting: Boolean get() = selection.isNotEmpty()
 
     val isEmpty: Boolean get() = !loading && months.isEmpty()
 }
-
-@Immutable
-data class PendingDeletionUi(val token: Long, val count: Int)
 
 sealed interface HistoryAction {
     data class SetFilter(val filter: HistoryFilter) : HistoryAction
@@ -77,20 +82,16 @@ sealed interface HistoryAction {
 
     data object OpenStats : HistoryAction
 
-    /** «Отменить» в snackbar удаления. */
-    data class UndoDelete(val token: Long) : HistoryAction
-
-    /** Snackbar показан и живёт [millis] (5 с или дольше по настройке TalkBack) — столько же держится отмена. */
-    data class UndoWindow(val token: Long, val millis: Long) : HistoryAction
-
-    /** Snackbar закрылся без «Отменить» — удалить сразу. */
-    data class SnackbarDismissed(val token: Long) : HistoryAction
+    /** Snackbar удаления: «Отменить», окно отмены, закрытие. */
+    data class Deletion(val action: DeletionAction) : HistoryAction
 }
 
 sealed interface HistoryEvent {
     data class OpenGame(val gameId: String) : HistoryEvent
 
     data object OpenStats : HistoryEvent
+
+    data class Message(val text: UiText) : HistoryEvent
 }
 
 /** Строки истории: CLOSED и HANDED_OVER без скрытых (отложенно удалённых), по месяцам `startedAt`, новые сверху. */
@@ -125,6 +126,7 @@ fun buildHistoryMonths(
                 rebuyCount = item.rebuyCount,
                 turnover = item.turnover,
                 rake = item.rake,
+                bankerIncome = item.bankerIncome,
                 hasOpenDebt = item.hasOpenDebt,
                 editedAfterClose = item.editedAfterClose,
                 handedOver = item.status == GameStatus.HANDED_OVER,
